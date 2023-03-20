@@ -65,12 +65,13 @@ Main guidelines:
     - [x] Keywords
     - [x] Identifiers
     - [x] Operators
-    - [] Literals
-        - [] Integer
-        - [] Float decimal
-        - [] Float scientific
-        - [] Strings
+    - [x] Literals
+        - [x] Integer
+        - [x] Float decimal
+        - [x] Float scientific
+        - [x] Strings
 - [] Strip comments
+- [] Autoinsert semicolons
 
 ## Parser
 

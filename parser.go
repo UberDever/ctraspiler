@@ -1,26 +1,32 @@
 package main
 
 import (
+	"bytes"
 	"os"
 
 	"github.com/bzick/tokenizer"
 )
 
-const (
-	TokenIdentifier = tokenizer.TokenKeyword
-	TokenString     = tokenizer.TokenString
-	TokenInteger    = tokenizer.TokenInteger
-	TokenFloat      = tokenizer.TokenFloat
+//go:generate stringer -type=TLSType
+type TokenType int
 
-	TokenRawString = iota
+const (
+	TokenIdentifier = TokenType(tokenizer.TokenKeyword)
+	TokenString     = TokenType(tokenizer.TokenString)
+	TokenInteger    = TokenType(tokenizer.TokenInteger)
+	TokenFloat      = TokenType(tokenizer.TokenFloat)
+
+	TokenRawString TokenType = iota
 	TokenKeyword
 	TokenOperator
+	TokenComment
+
 	TokenEOF
 	TokenEnd
 )
 
 type Token struct {
-	key   int
+	key   TokenType
 	value string
 	line  uint
 }
@@ -67,16 +73,43 @@ func (p *Parser) Tokenize(data []byte) {
 		AllowNumbersInKeyword().
 		StopOnUndefinedToken()
 
-	t.DefineStringToken(TokenString, "\"", "\"")
-	t.DefineStringToken(TokenRawString, "`", "`")
+	t.DefineTokens(tokenizer.TokenKey(TokenKeyword), p.config.keywords())
+	// t.DefineTokens(tokenizer.TokenKey(TokenOperator), p.config.operators())
 
-	t.DefineTokens(TokenKeyword, p.config.keywords())
-	t.DefineTokens(TokenOperator, p.config.operators())
+	t.DefineStringToken(tokenizer.TokenKey(TokenComment), "//", "\n")
+	t.DefineStringToken(tokenizer.TokenKey(TokenString), "\"", "\"")
+	t.DefineStringToken(tokenizer.TokenKey(TokenRawString), "`", "`")
 
 	p.stream = t.ParseBytes(data)
 }
 
+// TODO: This won't work even in case of correct match of operators
+// I guess I need to write tokenizer myself after all...
+func (p *Parser) oneLineComment() (Token, bool) {
+	isOperatorSlash := func(t tokenizer.Token) bool {
+		return t.Key() == tokenizer.TokenKey(TokenOperator) && bytes.Equal([]byte("/"), t.Value())
+	}
+
+	t := p.stream.CurrentToken()
+	if !t.IsValid() {
+		return EOF(), false
+	}
+
+	token := Token{}
+	if isOperatorSlash(*t) {
+		t = p.stream.NextToken()
+		if isOperatorSlash(*t) {
+			// p.stream.GoNextIfNextIs()
+		}
+	}
+	return token, true
+}
+
 func (p *Parser) NextToken() Token {
+	// if t, matched := p.oneLineComment(); matched {
+	// 	return t
+	// }
+
 	t := p.stream.CurrentToken()
 	defer p.stream.GoNext()
 
@@ -85,7 +118,7 @@ func (p *Parser) NextToken() Token {
 	}
 
 	token := Token{}
-	token.key = int(t.Key())
+	token.key = TokenType(t.Key())
 	token.line = uint(t.Line())
 	token.value = string(t.Value())
 
