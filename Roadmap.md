@@ -60,11 +60,11 @@ Main guidelines:
     - ~~[] Resource heuristics~~
 ## Scanner
 
-- [] utf8 chars
+- [x] utf8 chars
 - [] Tokens
-    - [] Keywords
-    - [] Identifiers
-    - [] Operators
+    - [x] Keywords
+    - [x] Identifiers
+    - [x] Operators
     - [] Literals
         - [] Integer
         - [] Float decimal

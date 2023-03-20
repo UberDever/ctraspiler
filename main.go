@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	filepath := flag.String("path", "undefined", "filepath")
+	filepath := flag.String("path", "undefined", "filepath to source")
 	flag.Parse()
 	_ = filepath
 }
