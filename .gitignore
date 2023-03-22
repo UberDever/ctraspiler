@@ -1,1 +1,9 @@
 ctranspiler
+parser/*
+*_string.go
+
+!parser/generate*
+!parser/antlr*
+!parser/GoLexer.g4
+!parser/GoParser.g4
+

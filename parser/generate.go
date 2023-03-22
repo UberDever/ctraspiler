@@ -1,3 +1,3 @@
 package parser
 
-//go:generate ./generate.shlanguage = None
+//go:generate ./generate.sh

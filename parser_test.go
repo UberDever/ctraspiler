@@ -3,9 +3,17 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"ctranspiler/parser"
+
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
 func matchTokens(str string, tokens []Token) error {
+	is := antlr.NewInputStream(`{"example": "json", "with": ["an", "array"]}`)
+	lexer := parser.NewGoLexer(is)
+	_ = lexer
+
 	config, err := NewDefaultConfig("config.json")
 	if err != nil {
 		return err

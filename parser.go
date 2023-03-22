@@ -7,7 +7,7 @@ import (
 	"github.com/bzick/tokenizer"
 )
 
-//go:generate stringer -type=TLSType
+//go:generate stringer -type=TokenType
 type TokenType int
 
 const (
