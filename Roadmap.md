@@ -70,8 +70,8 @@ Main guidelines:
         - [x] Float decimal
         - [x] Float scientific
         - [x] Strings
-- [] Strip comments
-- [] Autoinsert semicolons
+- [x] Strip comments
+- [x] Autoinsert semicolons
 
 ## Parser
 

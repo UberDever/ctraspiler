@@ -4,22 +4,13 @@ import (
 	"testing"
 )
 
-// "github.com/antlr/antlr4/runtime/Go/antlr/v4"
-
 func TestParser(t* testing.T) {
-	p := Parser{}
-
-	s := `
-        package main
-
-        import "fmt"
-        func main() {
-	        var a float32 = 4.2 // floats are great and all, but we didn't support them :(
-	        fmt.Println("Hello world! I am floating!", a)
-        }
+	test := `
+		2 + 3
 	`
-	p.Parse([]byte(s))
+	Parse(&DefaultConfig{}, []byte(test))
 }
+
 
 // func matchTokens(str string, tokens []Token) error {
 // 	config, err := NewDefaultConfig("config.json")

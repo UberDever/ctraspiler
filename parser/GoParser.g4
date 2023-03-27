@@ -33,6 +33,121 @@ options {
 	superClass = GoParserBase;
 }
 
+source:
+    statementList EOF;
+
+statementList: ((SEMI? | EOS? | {p.ClosingBracket()}?) statement eos)+;
+
+statement:
+	simpleStmt
+	// declaration
+	// | labeledStmt
+	// | goStmt
+	// | returnStmt
+	// | breakStmt
+	// | continueStmt
+	// | gotoStmt
+	// | fallthroughStmt
+	// | block
+	// | ifStmt
+	// | switchStmt
+	// | selectStmt
+	// | forStmt
+	// | deferStmt
+	;
+
+// declaration: 
+    // constDecl 
+	// | typeDecl 
+	// | varDecl
+	// ;
+
+simpleStmt:
+	emptyStmt
+	// | assignment
+	| expressionStmt
+	// | shortVarDecl
+	;
+
+emptyStmt: EOS | SEMI;
+
+expressionStmt: expression;
+
+expression:
+	primaryExpr
+	| unary_op = (
+		PLUS
+		| MINUS
+		// | EXCLAMATION
+		// | CARET
+		// | STAR
+		// | AMPERSAND
+		// | RECEIVE
+	) expression
+	| expression mul_op = (
+		STAR
+		| DIV
+		// | MOD
+		// | LSHIFT
+		// | RSHIFT
+		// | AMPERSAND
+		// | BIT_CLEAR
+	) expression
+	| expression add_op = (PLUS | MINUS /*| OR | CARET*/) expression
+	| expression rel_op = (
+		EQUALS
+		| NOT_EQUALS
+		| LESS
+		| LESS_OR_EQUALS
+		| GREATER
+		| GREATER_OR_EQUALS
+	) expression
+	// | expression LOGICAL_AND expression
+	// | expression LOGICAL_OR expression;
+	;
+
+primaryExpr:
+	operand
+	// | conversion
+	// | methodExpr
+	// | primaryExpr (
+	// 	(DOT IDENTIFIER)
+	// 	| index
+	// 	| slice_
+	// 	| typeAssertion
+	// 	| arguments
+	// )
+	;
+
+operand: literal | operandName | L_PAREN expression R_PAREN;
+
+literal: basicLit ;// | compositeLit | functionLit;
+
+basicLit:
+	NIL_LIT
+	| integer
+	| (RAW_STRING_LIT | INTERPRETED_STRING_LIT)
+	| FLOAT_LIT;
+
+integer:
+	DECIMAL_LIT
+	// | BINARY_LIT
+	// | OCTAL_LIT
+	// | HEX_LIT
+	// | IMAGINARY_LIT
+	// | RUNE_LIT
+	;
+
+operandName: IDENTIFIER;
+
+eos:
+	SEMI
+	| EOF
+	| EOS
+	| {p.ClosingBracket()}?;
+
+/*
+
 sourceFile:
 	packageClause eos (importDecl eos)* (
 		(functionDecl | methodDecl | declaration) eos
@@ -378,3 +493,4 @@ eos:
 	| EOS
 	| {p.ClosingBracket()}?;
 
+*/

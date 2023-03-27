@@ -6,26 +6,30 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-type Parser struct {}
+// todo: Parse returns an IR (AST?)
 
-type Listener struct {
-	parser.BaseGoParserListener
-}
-
-func (l* Listener) VisitTerminal(node antlr.TerminalNode) {
-}
-
-func (l *Listener) EnterSourceFile(ctx *parser.SourceFileContext) {
-}
-
-func (self *Parser) Parse(data []byte) {
+func Parse(config Config, data []byte) {
 	is := antlr.NewInputStream(string(data))
 	lexer := parser.NewGoLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	parser := parser.NewGoParser(stream)
-	listener := &Listener{}
-	antlr.ParseTreeWalkerDefault.Walk(listener, parser.SourceFile())
-	_ = parser
+	state := newParserState(config)
+	antlr.ParseTreeWalkerDefault.Walk(state, parser.Source())
+}
+
+type parserState struct {
+	parser.BaseGoParserListener
+}
+
+func newParserState(config Config) *parserState {
+	_ = config
+	return &parserState{}
+}
+
+func (l *parserState) VisitTerminal(node antlr.TerminalNode) {
+}
+
+func (l *parserState) EnterStatement(ctx *parser.StatementContext) {
 }
 
 // type TokenType int
