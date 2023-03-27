@@ -1,163 +1,171 @@
 package main
 
 import (
-	"fmt"
 	"testing"
-
-	"ctranspiler/parser"
-
-	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-func matchTokens(str string, tokens []Token) error {
-	is := antlr.NewInputStream(`{"example": "json", "with": ["an", "array"]}`)
-	lexer := parser.NewGoLexer(is)
-	_ = lexer
+// "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 
-	config, err := NewDefaultConfig("config.json")
-	if err != nil {
-		return err
-	}
+func TestParser(t* testing.T) {
+	p := Parser{}
 
-	p := NewParser(&config)
-	p.Tokenize([]byte(str))
+	s := `
+        package main
 
-	for i := range tokens {
-		got := p.NextToken()
-		want := tokens[i]
-
-		if got.isEOF() {
-			return fmt.Errorf("Unexpected EOF at %v", want)
-		}
-
-		if got.key != want.key ||
-			got.value != want.value ||
-			got.line != want.line {
-			return fmt.Errorf("%v =/> %v", got, want)
-		}
-
-	}
-
-	return nil
+        import "fmt"
+        func main() {
+	        var a float32 = 4.2 // floats are great and all, but we didn't support them :(
+	        fmt.Println("Hello world! I am floating!", a)
+        }
+	`
+	p.Parse([]byte(s))
 }
 
-func TestTokenizerIdentifiers(t *testing.T) {
-	{
-		got := "one two three"
-		expected := []Token{
-			{key: TokenType(TokenIdentifier), value: "one", line: 1},
-			{key: TokenType(TokenIdentifier), value: "two", line: 1},
-			{key: TokenType(TokenIdentifier), value: "three", line: 1},
-		}
+// func matchTokens(str string, tokens []Token) error {
+// 	config, err := NewDefaultConfig("config.json")
+// 	if err != nil {
+// 		return err
+// 	}
 
-		err := matchTokens(got, expected)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-	}
+// 	p := NewParser(&config)
+// 	p.Tokenize([]byte(str))
 
-	{
-		got := ` one
-			two
-			three
-		`
-		expected := []Token{
-			{key: TokenType(TokenIdentifier), value: "one", line: 1},
-			{key: TokenType(TokenIdentifier), value: "two", line: 2},
-			{key: TokenType(TokenIdentifier), value: "three", line: 3},
-		}
+// 	for i := range tokens {
+// 		got := p.NextToken()
+// 		want := tokens[i]
 
-		err := matchTokens(got, expected)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-	}
+// 		if got.isEOF() {
+// 			return fmt.Errorf("Unexpected EOF at %v", want)
+// 		}
 
-	{
-		got := ` var
-			type
-			struct
-			return
-			if
-			func
-			for
-			else
-			break
-			defer
-			match
-		`
-		expected := []Token{
-			{key: TokenType(TokenKeyword), value: "var", line: 1},
-			{key: TokenType(TokenKeyword), value: "type", line: 2},
-			{key: TokenType(TokenKeyword), value: "struct", line: 3},
-			{key: TokenType(TokenKeyword), value: "return", line: 4},
-			{key: TokenType(TokenKeyword), value: "if", line: 5},
-			{key: TokenType(TokenKeyword), value: "func", line: 6},
-			{key: TokenType(TokenKeyword), value: "for", line: 7},
-			{key: TokenType(TokenKeyword), value: "else", line: 8},
-			{key: TokenType(TokenKeyword), value: "break", line: 9},
-			{key: TokenType(TokenKeyword), value: "defer", line: 10},
-			{key: TokenType(TokenIdentifier), value: "match", line: 11},
-		}
+// 		if got.key != want.key ||
+// 			got.value != want.value ||
+// 			got.line != want.line {
+// 			return fmt.Errorf("%v =/> %v", got, want)
+// 		}
 
-		err := matchTokens(got, expected)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-	}
-}
+// 	}
 
-func TestTokenizerOperators(t *testing.T) {
-	{
-		got := "2 + 2"
-		expected := []Token{
-			{key: TokenType(TokenInteger), value: "2", line: 1},
-			{key: TokenType(TokenOperator), value: "+", line: 1},
-			{key: TokenType(TokenInteger), value: "2", line: 1},
-		}
+// 	return nil
+// }
 
-		err := matchTokens(got, expected)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-	}
+// func TestTokenizerIdentifiers(t *testing.T) {
+// 	{
+// 		got := "one two three"
+// 		expected := []Token{
+// 			{key: TokenType(TokenIdentifier), value: "one", line: 1},
+// 			{key: TokenType(TokenIdentifier), value: "two", line: 1},
+// 			{key: TokenType(TokenIdentifier), value: "three", line: 1},
+// 		}
 
-	{
-		got := ` []{} + :=--
-			++
-		`
-		expected := []Token{
-			{key: TokenType(TokenOperator), value: "[]", line: 1},
-			{key: TokenType(TokenOperator), value: "{}", line: 1},
-			{key: TokenType(TokenOperator), value: "+", line: 1},
-			{key: TokenType(TokenOperator), value: ":=", line: 1},
-			{key: TokenType(TokenOperator), value: "--", line: 1},
-			{key: TokenType(TokenOperator), value: "++", line: 2},
-		}
+// 		err := matchTokens(got, expected)
+// 		if err != nil {
+// 			t.Errorf(err.Error())
+// 		}
+// 	}
 
-		err := matchTokens(got, expected)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-	}
-}
+// 	{
+// 		got := ` one
+// 			two
+// 			three
+// 		`
+// 		expected := []Token{
+// 			{key: TokenType(TokenIdentifier), value: "one", line: 1},
+// 			{key: TokenType(TokenIdentifier), value: "two", line: 2},
+// 			{key: TokenType(TokenIdentifier), value: "three", line: 3},
+// 		}
 
-func TestTokenizerComments(t *testing.T) {
-	{
-		got := `
-			// some comment
-			non_comment
-			//this is very//nasty comment
-		`
-		expected := []Token{
-			{key: TokenType(TokenComment), value: " some comment", line: 2},
-			{key: TokenType(TokenIdentifier), value: "non_comment", line: 3},
-			{key: TokenType(TokenComment), value: "this is very//nasty comment", line: 4},
-		}
+// 		err := matchTokens(got, expected)
+// 		if err != nil {
+// 			t.Errorf(err.Error())
+// 		}
+// 	}
 
-		err := matchTokens(got, expected)
-		if err != nil {
-			t.Errorf(err.Error())
-		}
-	}
-}
+// 	{
+// 		got := ` var
+// 			type
+// 			struct
+// 			return
+// 			if
+// 			func
+// 			for
+// 			else
+// 			break
+// 			defer
+// 			match
+// 		`
+// 		expected := []Token{
+// 			{key: TokenType(TokenKeyword), value: "var", line: 1},
+// 			{key: TokenType(TokenKeyword), value: "type", line: 2},
+// 			{key: TokenType(TokenKeyword), value: "struct", line: 3},
+// 			{key: TokenType(TokenKeyword), value: "return", line: 4},
+// 			{key: TokenType(TokenKeyword), value: "if", line: 5},
+// 			{key: TokenType(TokenKeyword), value: "func", line: 6},
+// 			{key: TokenType(TokenKeyword), value: "for", line: 7},
+// 			{key: TokenType(TokenKeyword), value: "else", line: 8},
+// 			{key: TokenType(TokenKeyword), value: "break", line: 9},
+// 			{key: TokenType(TokenKeyword), value: "defer", line: 10},
+// 			{key: TokenType(TokenIdentifier), value: "match", line: 11},
+// 		}
+
+// 		err := matchTokens(got, expected)
+// 		if err != nil {
+// 			t.Errorf(err.Error())
+// 		}
+// 	}
+// }
+
+// func TestTokenizerOperators(t *testing.T) {
+// 	{
+// 		got := "2 + 2"
+// 		expected := []Token{
+// 			{key: TokenType(TokenInteger), value: "2", line: 1},
+// 			{key: TokenType(TokenOperator), value: "+", line: 1},
+// 			{key: TokenType(TokenInteger), value: "2", line: 1},
+// 		}
+
+// 		err := matchTokens(got, expected)
+// 		if err != nil {
+// 			t.Errorf(err.Error())
+// 		}
+// 	}
+
+// 	{
+// 		got := ` []{} + :=--
+// 			++
+// 		`
+// 		expected := []Token{
+// 			{key: TokenType(TokenOperator), value: "[]", line: 1},
+// 			{key: TokenType(TokenOperator), value: "{}", line: 1},
+// 			{key: TokenType(TokenOperator), value: "+", line: 1},
+// 			{key: TokenType(TokenOperator), value: ":=", line: 1},
+// 			{key: TokenType(TokenOperator), value: "--", line: 1},
+// 			{key: TokenType(TokenOperator), value: "++", line: 2},
+// 		}
+
+// 		err := matchTokens(got, expected)
+// 		if err != nil {
+// 			t.Errorf(err.Error())
+// 		}
+// 	}
+// }
+
+// func TestTokenizerComments(t *testing.T) {
+// 	{
+// 		got := `
+// 			// some comment
+// 			non_comment
+// 			//this is very//nasty comment
+// 		`
+// 		expected := []Token{
+// 			{key: TokenType(TokenComment), value: " some comment", line: 2},
+// 			{key: TokenType(TokenIdentifier), value: "non_comment", line: 3},
+// 			{key: TokenType(TokenComment), value: "this is very//nasty comment", line: 4},
+// 		}
+
+// 		err := matchTokens(got, expected)
+// 		if err != nil {
+// 			t.Errorf(err.Error())
+// 		}
+// 	}
+// }

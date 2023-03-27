@@ -1,126 +1,146 @@
 package main
 
 import (
-	"bytes"
-	"os"
+	"ctranspiler/parser"
 
-	"github.com/bzick/tokenizer"
+	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-//go:generate stringer -type=TokenType
-type TokenType int
+type Parser struct {}
 
-const (
-	TokenIdentifier = TokenType(tokenizer.TokenKeyword)
-	TokenString     = TokenType(tokenizer.TokenString)
-	TokenInteger    = TokenType(tokenizer.TokenInteger)
-	TokenFloat      = TokenType(tokenizer.TokenFloat)
-
-	TokenRawString TokenType = iota
-	TokenKeyword
-	TokenOperator
-	TokenComment
-
-	TokenEOF
-	TokenEnd
-)
-
-type Token struct {
-	key   TokenType
-	value string
-	line  uint
+type Listener struct {
+	parser.BaseGoParserListener
 }
 
-func EOF() Token {
-	return Token{key: TokenEOF}
+func (l* Listener) VisitTerminal(node antlr.TerminalNode) {
 }
 
-func (t Token) isEOF() bool {
-	return t.key == TokenEOF
+func (l *Listener) EnterSourceFile(ctx *parser.SourceFileContext) {
 }
 
-type Parser struct {
-	config Config
-	stream *tokenizer.Stream
+func (self *Parser) Parse(data []byte) {
+	is := antlr.NewInputStream(string(data))
+	lexer := parser.NewGoLexer(is)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	parser := parser.NewGoParser(stream)
+	listener := &Listener{}
+	antlr.ParseTreeWalkerDefault.Walk(listener, parser.SourceFile())
+	_ = parser
 }
 
-func NewParser(config Config) Parser {
-	return Parser{config: config}
-}
+// type TokenType int
 
-func (p *Parser) TokenizeFile(filename string) error {
-	file, err := os.Open(filename)
+// const (
+// 	TokenIdentifier = TokenType(tokenizer.TokenKeyword)
+// 	TokenString     = TokenType(tokenizer.TokenString)
+// 	TokenInteger    = TokenType(tokenizer.TokenInteger)
+// 	TokenFloat      = TokenType(tokenizer.TokenFloat)
 
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+// 	TokenRawString TokenType = iota
+// 	TokenKeyword
+// 	TokenOperator
+// 	TokenComment
 
-	bytes := make([]byte, 0, 4096)
-	bytesRead, err := file.Read(bytes)
+// 	TokenEOF
+// 	TokenEnd
+// )
 
-	if err != nil || bytesRead == 0 {
-		return err
-	}
+// type Token struct {
+// 	key   TokenType
+// 	value string
+// 	line  uint
+// }
 
-	p.Tokenize(bytes)
-	return nil
-}
+// func EOF() Token {
+// 	return Token{key: TokenEOF}
+// }
 
-func (p *Parser) Tokenize(data []byte) {
-	t := tokenizer.New()
-	t.AllowKeywordUnderscore().
-		AllowNumbersInKeyword().
-		StopOnUndefinedToken()
+// func (t Token) isEOF() bool {
+// 	return t.key == TokenEOF
+// }
 
-	t.DefineTokens(tokenizer.TokenKey(TokenKeyword), p.config.keywords())
-	// t.DefineTokens(tokenizer.TokenKey(TokenOperator), p.config.operators())
+// type Parser struct {
+// 	config Config
+// 	stream *tokenizer.Stream
+// }
 
-	t.DefineStringToken(tokenizer.TokenKey(TokenComment), "//", "\n")
-	t.DefineStringToken(tokenizer.TokenKey(TokenString), "\"", "\"")
-	t.DefineStringToken(tokenizer.TokenKey(TokenRawString), "`", "`")
+// func NewParser(config Config) Parser {
+// 	return Parser{config: config}
+// }
 
-	p.stream = t.ParseBytes(data)
-}
+// func (p *Parser) TokenizeFile(filename string) error {
+// 	file, err := os.Open(filename)
 
-// TODO: This won't work even in case of correct match of operators
-// I guess I need to write tokenizer myself after all...
-func (p *Parser) oneLineComment() (Token, bool) {
-	isOperatorSlash := func(t tokenizer.Token) bool {
-		return t.Key() == tokenizer.TokenKey(TokenOperator) && bytes.Equal([]byte("/"), t.Value())
-	}
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer file.Close()
 
-	t := p.stream.CurrentToken()
-	if !t.IsValid() {
-		return EOF(), false
-	}
+// 	bytes := make([]byte, 0, 4096)
+// 	bytesRead, err := file.Read(bytes)
 
-	token := Token{}
-	if isOperatorSlash(*t) {
-		t = p.stream.NextToken()
-		if isOperatorSlash(*t) {
-			// p.stream.GoNextIfNextIs()
-		}
-	}
-	return token, true
-}
+// 	if err != nil || bytesRead == 0 {
+// 		return err
+// 	}
 
-func (p *Parser) NextToken() Token {
-	// if t, matched := p.oneLineComment(); matched {
-	// 	return t
-	// }
+// 	p.Tokenize(bytes)
+// 	return nil
+// }
 
-	t := p.stream.CurrentToken()
-	defer p.stream.GoNext()
+// func (p *Parser) Tokenize(data []byte) {
+// 	t := tokenizer.New()
+// 	t.AllowKeywordUnderscore().
+// 		AllowNumbersInKeyword().
+// 		StopOnUndefinedToken()
 
-	if !t.IsValid() {
-		return EOF()
-	}
+// 	t.DefineTokens(tokenizer.TokenKey(TokenKeyword), p.config.keywords())
+// 	// t.DefineTokens(tokenizer.TokenKey(TokenOperator), p.config.operators())
 
-	token := Token{}
-	token.key = TokenType(t.Key())
-	token.line = uint(t.Line())
-	token.value = string(t.Value())
+// 	t.DefineStringToken(tokenizer.TokenKey(TokenComment), "//", "\n")
+// 	t.DefineStringToken(tokenizer.TokenKey(TokenString), "\"", "\"")
+// 	t.DefineStringToken(tokenizer.TokenKey(TokenRawString), "`", "`")
 
-	return token
-}
+// 	p.stream = t.ParseBytes(data)
+// }
+
+// // TODO: This won't work even in case of correct match of operators
+// // I guess I need to write tokenizer myself after all...
+// func (p *Parser) oneLineComment() (Token, bool) {
+// 	isOperatorSlash := func(t tokenizer.Token) bool {
+// 		return t.Key() == tokenizer.TokenKey(TokenOperator) && bytes.Equal([]byte("/"), t.Value())
+// 	}
+
+// 	t := p.stream.CurrentToken()
+// 	if !t.IsValid() {
+// 		return EOF(), false
+// 	}
+
+// 	token := Token{}
+// 	if isOperatorSlash(*t) {
+// 		t = p.stream.NextToken()
+// 		if isOperatorSlash(*t) {
+// 			// p.stream.GoNextIfNextIs()
+// 		}
+// 	}
+// 	return token, true
+// }
+
+// func (p *Parser) NextToken() Token {
+// 	// if t, matched := p.oneLineComment(); matched {
+// 	// 	return t
+// 	// }
+
+// 	t := p.stream.CurrentToken()
+// 	defer p.stream.GoNext()
+
+// 	if !t.IsValid() {
+// 		return EOF()
+// 	}
+
+// 	token := Token{}
+// 	token.key = TokenType(t.Key())
+// 	token.line = uint(t.Line())
+// 	token.value = string(t.Value())
+
+// 	return token
+// }
