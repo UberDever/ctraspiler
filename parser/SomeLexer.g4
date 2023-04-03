@@ -1,3 +1,4 @@
+// TODO: fix this dang grammar for semicolons
 lexer grammar SomeLexer;
 
 // BREAK: 'break' -> mode(TRYSEMICOLON); DEFAULT: 'default';
@@ -213,3 +214,5 @@ LINE_COMMENT_TRYSEMICOLON: '//' ~[\r\n]* -> channel(HIDDEN);
 // Emit an EOS token for any newlines, semicolon, multiline comments or the EOF and return to normal
 // lexing
 EOS: ([\r\n]+ | ';' | '/*' .*? '*/' | EOF) -> mode(DEFAULT_MODE);
+
+OTHERWISE: (~[\r\n]+ | ~';' | ~'/') -> channel(HIDDEN), mode(DEFAULT_MODE);
