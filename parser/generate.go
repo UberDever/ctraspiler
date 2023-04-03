@@ -6,15 +6,13 @@ import (
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-// GoParserBase implementation.
-type GoParserBase struct {
+type SomeParserBase struct {
 	*antlr.BaseParser
 }
 
-
 // Returns true if the current Token is a closing bracket (")" or "}")
-func (p *GoParserBase) ClosingBracket() bool {
+func (p *SomeParserBase) ClosingBracket() bool {
 	stream := p.GetTokenStream()
 	prevTokenType := stream.LA(1)
-	return prevTokenType == GoParserR_PAREN || prevTokenType == GoParserR_CURLY;
+	return prevTokenType == SomeParserR_PAREN || prevTokenType == SomeParserR_CURLY
 }

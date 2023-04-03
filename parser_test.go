@@ -6,7 +6,7 @@ import (
 
 func TestParser(t *testing.T) {
 	test := `
-		;
+		;;;
 		2 + 3
 		4 * 10
 	`

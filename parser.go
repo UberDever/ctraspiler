@@ -31,10 +31,10 @@ type AST struct {
 
 func Parse(config Config, data []byte) AST {
 	is := antlr.NewInputStream(string(data))
-	lexer := parser.NewGoLexer(is)
+	lexer := parser.NewSomeLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
-	parse := parser.NewGoParser(stream)
+	parse := parser.NewSomeParser(stream)
 	visitor := parserVisitor{}
 
 	source := parse.Source().(*parser.SourceContext)
@@ -45,7 +45,7 @@ func Parse(config Config, data []byte) AST {
 }
 
 type parserVisitor struct {
-	parser.BaseGoParserVisitor
+	parser.BaseSomeParserVisitor
 }
 
 func (v *parserVisitor) VisitSource(ctx *parser.SourceContext) any {
@@ -57,6 +57,10 @@ func (v *parserVisitor) VisitSource(ctx *parser.SourceContext) any {
 }
 
 func (v *parserVisitor) VisitStatement(ctx *parser.StatementContext) any {
-	fmt.Println(ctx)
-	return nil
+	return v.VisitSimpleStmt(ctx.SimpleStmt().(*parser.SimpleStmtContext))
+}
+
+func (v *parserVisitor) VisitSimpleStmt(ctx *parser.SimpleStmtContext) any {
+	fmt.Println(ctx.IsEmpty())
+	return ctx.ExpressionStmt()
 }
