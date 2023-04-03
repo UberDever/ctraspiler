@@ -2,149 +2,61 @@ package main
 
 import (
 	"ctranspiler/parser"
+	"fmt"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-// todo: Parse returns an IR (AST?)
+const (
+	TagSource = iota
+	TagStatement
+	TagDeclaration
+	TagExpression
+)
 
-func Parse(config Config, data []byte) {
+type Tag = int
+type Data = int
+
+type Node struct {
+	tag      Tag
+	token    Data
+	lhs, rhs Data
+}
+
+type AST struct {
+	Source string
+	Nodes  []Node
+	Extra  []Data
+}
+
+func Parse(config Config, data []byte) AST {
 	is := antlr.NewInputStream(string(data))
 	lexer := parser.NewGoLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-	parser := parser.NewGoParser(stream)
-	state := newParserState(config)
-	antlr.ParseTreeWalkerDefault.Walk(state, parser.Source())
+
+	parse := parser.NewGoParser(stream)
+	visitor := parserVisitor{}
+
+	source := parse.Source().(*parser.SourceContext)
+	ast := (visitor.VisitSource(source)).(AST)
+	ast.Source = string(data)
+
+	return ast
 }
 
-type parserState struct {
-	parser.BaseGoParserListener
+type parserVisitor struct {
+	parser.BaseGoParserVisitor
 }
 
-func newParserState(config Config) *parserState {
-	_ = config
-	return &parserState{}
+func (v *parserVisitor) VisitSource(ctx *parser.SourceContext) any {
+	s := ctx.StatementList().AllStatement()
+	for i := range s {
+		v.VisitStatement(s[i].(*parser.StatementContext))
+	}
+	return AST{}
 }
 
-func (l *parserState) VisitTerminal(node antlr.TerminalNode) {
+func (v *parserVisitor) VisitStatement(ctx *parser.StatementContext) any {
+	fmt.Println(ctx)
+	return nil
 }
-
-func (l *parserState) EnterStatement(ctx *parser.StatementContext) {
-}
-
-// type TokenType int
-
-// const (
-// 	TokenIdentifier = TokenType(tokenizer.TokenKeyword)
-// 	TokenString     = TokenType(tokenizer.TokenString)
-// 	TokenInteger    = TokenType(tokenizer.TokenInteger)
-// 	TokenFloat      = TokenType(tokenizer.TokenFloat)
-
-// 	TokenRawString TokenType = iota
-// 	TokenKeyword
-// 	TokenOperator
-// 	TokenComment
-
-// 	TokenEOF
-// 	TokenEnd
-// )
-
-// type Token struct {
-// 	key   TokenType
-// 	value string
-// 	line  uint
-// }
-
-// func EOF() Token {
-// 	return Token{key: TokenEOF}
-// }
-
-// func (t Token) isEOF() bool {
-// 	return t.key == TokenEOF
-// }
-
-// type Parser struct {
-// 	config Config
-// 	stream *tokenizer.Stream
-// }
-
-// func NewParser(config Config) Parser {
-// 	return Parser{config: config}
-// }
-
-// func (p *Parser) TokenizeFile(filename string) error {
-// 	file, err := os.Open(filename)
-
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer file.Close()
-
-// 	bytes := make([]byte, 0, 4096)
-// 	bytesRead, err := file.Read(bytes)
-
-// 	if err != nil || bytesRead == 0 {
-// 		return err
-// 	}
-
-// 	p.Tokenize(bytes)
-// 	return nil
-// }
-
-// func (p *Parser) Tokenize(data []byte) {
-// 	t := tokenizer.New()
-// 	t.AllowKeywordUnderscore().
-// 		AllowNumbersInKeyword().
-// 		StopOnUndefinedToken()
-
-// 	t.DefineTokens(tokenizer.TokenKey(TokenKeyword), p.config.keywords())
-// 	// t.DefineTokens(tokenizer.TokenKey(TokenOperator), p.config.operators())
-
-// 	t.DefineStringToken(tokenizer.TokenKey(TokenComment), "//", "\n")
-// 	t.DefineStringToken(tokenizer.TokenKey(TokenString), "\"", "\"")
-// 	t.DefineStringToken(tokenizer.TokenKey(TokenRawString), "`", "`")
-
-// 	p.stream = t.ParseBytes(data)
-// }
-
-// // TODO: This won't work even in case of correct match of operators
-// // I guess I need to write tokenizer myself after all...
-// func (p *Parser) oneLineComment() (Token, bool) {
-// 	isOperatorSlash := func(t tokenizer.Token) bool {
-// 		return t.Key() == tokenizer.TokenKey(TokenOperator) && bytes.Equal([]byte("/"), t.Value())
-// 	}
-
-// 	t := p.stream.CurrentToken()
-// 	if !t.IsValid() {
-// 		return EOF(), false
-// 	}
-
-// 	token := Token{}
-// 	if isOperatorSlash(*t) {
-// 		t = p.stream.NextToken()
-// 		if isOperatorSlash(*t) {
-// 			// p.stream.GoNextIfNextIs()
-// 		}
-// 	}
-// 	return token, true
-// }
-
-// func (p *Parser) NextToken() Token {
-// 	// if t, matched := p.oneLineComment(); matched {
-// 	// 	return t
-// 	// }
-
-// 	t := p.stream.CurrentToken()
-// 	defer p.stream.GoNext()
-
-// 	if !t.IsValid() {
-// 		return EOF()
-// 	}
-
-// 	token := Token{}
-// 	token.key = TokenType(t.Key())
-// 	token.line = uint(t.Line())
-// 	token.value = string(t.Value())
-
-// 	return token
-// }

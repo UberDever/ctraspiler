@@ -4,13 +4,15 @@ import (
 	"testing"
 )
 
-func TestParser(t* testing.T) {
+func TestParser(t *testing.T) {
 	test := `
+		;
 		2 + 3
+		4 * 10
 	`
-	Parse(&DefaultConfig{}, []byte(test))
+	ast := Parse(&DefaultConfig{}, []byte(test))
+	_ = ast
 }
-
 
 // func matchTokens(str string, tokens []Token) error {
 // 	config, err := NewDefaultConfig("config.json")
