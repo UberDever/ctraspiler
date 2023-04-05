@@ -4,7 +4,34 @@ grammar Some
 /// *** PARSER ***
 
 source
-	: statementList EOF
+	: TERMINATOR
+	| functionDecl* EOF
+	;
+
+functionDecl
+	: 'fn' WS IDENTIFIER (function | signature) TERMINATOR
+	;
+
+function
+	: signature block
+	;
+
+signature
+	: parameters // result?
+	;
+
+// result : parameters | goType ;
+
+parameters
+	: '(' (identifierList ','?)? ')'
+	;
+
+identifierList
+	: IDENTIFIER (',' IDENTIFIER)*
+	;
+
+block
+	: '{' WS statementList WS '}'
 	;
 
 statementList
@@ -79,7 +106,7 @@ IDENTIFIER
 KEYWORD
 	: 'break'
 	| 'default'
-	| 'func'
+	| 'fn'
 	| 'interface'
 	| 'select'
 	| 'case'

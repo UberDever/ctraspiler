@@ -29,6 +29,9 @@ type AST struct {
 	Extra  []Data
 }
 
+// TODO: Add tokens
+// TODO: Generate tree
+
 func Parse(config Config, data []byte) AST {
 	is := antlr.NewInputStream(string(data))
 	lexer := parser.NewSomeLexer(is)
@@ -45,14 +48,14 @@ func Parse(config Config, data []byte) AST {
 }
 
 type parserVisitor struct {
-	parser.BaseSomeParserVisitor
+	parser.BaseSomeVisitor
 }
 
 func (v *parserVisitor) VisitSource(ctx *parser.SourceContext) any {
-	s := ctx.StatementList().AllStatement()
-	for i := range s {
-		v.VisitStatement(s[i].(*parser.StatementContext))
-	}
+	// s := ctx.StatementList().AllStatement()
+	// for i := range s {
+	// 	v.VisitStatement(s[i].(*parser.StatementContext))
+	// }
 	return AST{}
 }
 

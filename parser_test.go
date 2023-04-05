@@ -6,9 +6,16 @@ import (
 
 func TestParser(t *testing.T) {
 	test := `
-		;;;
-		var a = 2 + 3
-		var b = 4 * 10
+	;
+	/* fn main() {
+		2 + 3
+		4 * 10 
+	}
+
+	fn someOtherFunc
+	(a, b, c) {
+		- 10
+	} */
 	`
 	ast := Parse(&DefaultConfig{}, []byte(test))
 	_ = ast
