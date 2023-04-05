@@ -7,8 +7,8 @@ import (
 func TestParser(t *testing.T) {
 	test := `
 		;;;
-		2 + 3
-		4 * 10
+		var a = 2 + 3
+		var b = 4 * 10
 	`
 	ast := Parse(&DefaultConfig{}, []byte(test))
 	_ = ast

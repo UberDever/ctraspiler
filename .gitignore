@@ -4,6 +4,5 @@ parser/*
 
 !parser/generate*
 !parser/antlr*
-!parser/SomeLexer.g4
-!parser/SomeParser.g4
+!parser/Some.g4
 
