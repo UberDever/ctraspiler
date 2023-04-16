@@ -4,20 +4,39 @@ import (
 	"testing"
 )
 
-func TestParser(t *testing.T) {
-	test := `
-	;
-	/* fn main() {
-		2 + 3
-		4 * 10 
+var example1 = `
+	type Some struct {
+		result f32
 	}
 
-	fn someOtherFunc
-	(a, b, c) {
-		- 10
-	} */
-	`
-	ast := Parse(&DefaultConfig{}, []byte(test))
+	fn func1(a i8, b f32, c f64) i64 {
+		return a * b + c
+	}
+
+	fn func2(a Some, b f32, c f64) {
+		a.result = b + c
+	}
+
+	s := Some{}
+	s.func2(5.3, 4.8)
+`
+
+func TestSimpleDecl(t *testing.T) {
+	test := "fn main() {}"
+	// test := `
+	// 	fn main() {
+
+	// 	}
+	// 	/* comment */
+	// `
+	tokens, ast := Parse(&DefaultConfig{}, []byte(test))
+
+	// for _, t := range tokens {
+	// 	str := ast.Source[t.start : t.end+1]
+	// 	fmt.Println(fmt.Sprintf("%d [%s]", t.tag, str))
+	// }
+
+	_ = tokens
 	_ = ast
 }
 
