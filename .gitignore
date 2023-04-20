@@ -1,8 +1,9 @@
-ctranspiler
-parser/*
+some
+example
+antlr/*
 *_string.go
 
-!parser/generate*
-!parser/antlr*
-!parser/Some.g4
+!antlr/generate*
+!antlr/antlr*
+!antlr/Some.g4
 
