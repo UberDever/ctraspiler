@@ -503,11 +503,6 @@ TERMINATOR
 	| '\r'
 	;
 
-COMMENT
-	: '/*' .*? '*/'
-	| LINE_COMMENT
-	;
-
 LINE_COMMENT
 	: '//' ~[\r\n]* [\r\n]
 	;

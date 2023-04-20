@@ -4,9 +4,11 @@ import (
 	antlr_parser "some/antlr"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr/v4"
+	"golang.org/x/exp/utf8string"
 )
 
 const (
+	TokenEOF          = -1
 	TokenUndefined    = 0
 	TokenKeyword      = antlr_parser.SomeKEYWORD
 	TokenIdentifier   = antlr_parser.SomeIDENTIFIER
@@ -21,15 +23,14 @@ const (
 	TokenStringLit    = antlr_parser.SomeSTRING_LIT
 	TokenWS           = antlr_parser.SomeWS
 	TokenTerminator   = antlr_parser.SomeTERMINATOR
-	TokenComment      = antlr_parser.SomeCOMMENT
 	TokenLineComment  = antlr_parser.SomeLINE_COMMENT
 )
 
 const (
 	NodeSource = iota
-	NodeStatement
-	NodeDeclaration
-	NodeExpression
+	NodeIntLiteral
+	NodeFloatLiteral
+	NodeStringLiteral
 )
 
 type Tag = int
@@ -41,18 +42,6 @@ type Token struct {
 	end   uint
 	line  int
 	col   int
-}
-
-type Node struct {
-	tag      Tag
-	tokenIdx Data
-	lhs, rhs Data
-}
-
-type AST struct {
-	Source string
-	Nodes  []Node
-	Extra  []Data
 }
 
 func tokenize(source []byte) []Token {
@@ -74,21 +63,158 @@ func tokenize(source []byte) []Token {
 			col:   t.GetColumn(),
 		})
 	}
+	tokens = append(tokens, Token{tag: TokenEOF})
 
 	return tokens
 }
 
-// TODO: Write my own visitor that can return value (node index)
-// TODO: Add types to grammar
-// TODO: Add nodes:
-// 1. lhs = extra.len()
-// 2. rhs = extra.len() + node.len()
-// 3. extra.reserve(node.len())
-// 4. for i in node { extra[extra_prevlen + i] = visit(node[i]) }
+type Parser struct {
+	ast     *AST
+	current int
+	wasNL   bool
+}
 
 func Parse(source []byte, tokens []Token) AST {
-	ast := AST{}
-	ast.Source = string(source)
+	ast := AST{
+		source: string(source),
+		tokens: tokens,
+	}
+
+	p := Parser{
+		ast: &ast,
+	}
+	p.skip()
+	p.parseSource()
 
 	return ast
+}
+
+func (p *Parser) parseSource() {
+	sourceNode := Node{
+		tag: NodeSource,
+		lhs: len(p.ast.extra),
+		rhs: 0,
+	}
+
+	for {
+		t := p.ast.tokens[p.current]
+		if t.tag == TokenEOF {
+			break
+		}
+
+		// TODO: Add error reporting here
+		index := p.parseLiteral()
+		p.skip()
+
+		p.ast.extra = append(p.ast.extra, index)
+		sourceNode.rhs++
+	}
+
+	p.ast.nodes = append(p.ast.nodes, sourceNode)
+}
+
+func (p *Parser) parseLiteral() int {
+	t := p.ast.tokens[p.current]
+	switch t.tag {
+	case TokenIntLit:
+		p.ast.nodes = append(p.ast.nodes, Node{
+			tag:      NodeIntLiteral,
+			tokenIdx: p.current,
+		})
+		p.current++
+	case TokenFloatLit:
+		p.ast.nodes = append(p.ast.nodes, Node{
+			tag:      NodeFloatLiteral,
+			tokenIdx: p.current,
+		})
+		p.current++
+	case TokenStringLit:
+		p.ast.nodes = append(p.ast.nodes, Node{
+			tag:      NodeStringLiteral,
+			tokenIdx: p.current,
+		})
+		p.current++
+
+	default:
+		return -1
+	}
+	index := len(p.ast.nodes) - 1
+	return index
+}
+
+func (p *Parser) skip() {
+	p.wasNL = false
+	for {
+		tag := p.ast.tokens[p.current].tag
+		switch tag {
+		case TokenEOF:
+			p.wasNL = true
+			return
+		case TokenTerminator:
+			fallthrough
+		case TokenLineComment:
+			p.wasNL = true
+		default:
+			return
+		}
+		p.current++
+	}
+}
+
+type Node struct {
+	tag      Tag
+	tokenIdx Data
+	lhs, rhs Data
+}
+
+type AST struct {
+	source string
+	tokens []Token
+	nodes  []Node
+	extra  []Data
+}
+
+func (ast *AST) GetNodeString(n *Node) string {
+	t := ast.tokens[n.tokenIdx]
+	switch n.tag {
+	case NodeSource:
+		return "Source"
+	case NodeIntLiteral:
+		fallthrough
+	case NodeFloatLiteral:
+		fallthrough
+	case NodeStringLiteral:
+		return utf8string.NewString(ast.source).Slice(int(t.start), int(t.end)+1)
+	}
+	return "Undefined"
+
+}
+
+func (ast *AST) Traverse(f func(*Node)) {
+	root := -1
+	for i := range ast.nodes {
+		n := ast.nodes[i]
+		if n.tag == NodeSource {
+			root = i
+		}
+	}
+	if root == -1 {
+		panic("Root was not found")
+	}
+
+	ast.traverseNodes(f, root)
+}
+
+func (ast *AST) traverseNodes(f func(*Node), current int) {
+	n := ast.nodes[current]
+	f(&n)
+	switch n.tag {
+	case NodeSource:
+		{
+			for i := n.lhs; i < n.rhs; i++ {
+				c_i := ast.extra[i]
+				ast.traverseNodes(f, c_i)
+			}
+		}
+	}
 }

@@ -1,27 +1,26 @@
 package parser
 
 import (
+	"fmt"
 	"testing"
 
 	"golang.org/x/exp/utf8string"
 )
 
-var example1 = `
-	type Some struct {
-		result f32
-	}
+// type Some struct {
+// 	result f32
+// }
 
-	fn func1(a i8, b f32, c f64) i64 {
-		return a * b + c
-	}
+// fn func1(a i8, b f32, c f64) i64 {
+// 	return a * b + c
+// }
 
-	fn func2(a Some, b f32, c f64) {
-		a.result = b + c
-	}
+// fn func2(a Some, b f32, c f64) {
+// 	a.result = b + c
+// }
 
-	s := Some{}
-	s.func2(5.3, 4.8)
-`
+// s := Some{}
+// s.func2(5.3, 4.8)
 
 func TestTokenizer(t *testing.T) {
 	source := utf8string.NewString(`fn identifier
@@ -34,7 +33,7 @@ func TestTokenizer(t *testing.T) {
 	Идентификатор
 	`)
 	tokens := tokenize([]byte(source.String()))
-	expected := []struct {
+	expected := [...]struct {
 		int
 		string
 	}{
@@ -61,9 +60,15 @@ func TestTokenizer(t *testing.T) {
 		{TokenIdentifier, "Идентификатор"},
 		{TokenTerminator, "\n"},
 	}
+	if tokens[len(tokens)-1].tag != TokenEOF {
+		t.Errorf("Missed EOF at the end of token stream")
+	}
+	tokens = tokens[:len(tokens)-1]
+
 	if len(tokens) != len(expected) {
 		t.Errorf("Same tokens arrays expected, got tokens=%d and expected=%d", len(tokens), len(expected))
 	}
+
 	tokensLen := len(tokens)
 	for i := 0; i < tokensLen; i++ {
 		lhs := tokens[i]
@@ -76,4 +81,20 @@ func TestTokenizer(t *testing.T) {
 			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.int)
 		}
 	}
+}
+
+func TestParseLiterals(t *testing.T) {
+	source := utf8string.NewString(`
+		5.6
+		 14.8
+		  1235419
+		   "some"
+		"string"
+	`)
+	bytes := []byte(source.String())
+	tokens := tokenize(bytes)
+	ast := Parse(bytes, tokens)
+	ast.Traverse(func(node *Node) {
+		fmt.Println(ast.GetNodeString(node))
+	})
 }
