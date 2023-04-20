@@ -21,23 +21,24 @@ var example1 = `
 	s.func2(5.3, 4.8)
 `
 
-func TestSimpleDecl(t *testing.T) {
-	test := "fn main() {}"
-	// test := `
-	// 	fn main() {
+func TestTokenizer(t *testing.T) {
+	// source := "fn main() {}"
+	source := `
+	identifier
+	break
+	&& == + - * / !
 
-	// 	}
-	// 	/* comment */
-	// `
-	tokens, ast := Parse(&DefaultConfig{}, []byte(test))
+	`
+	tokens := tokenize([]byte(source))
+	// tokens, ast := Parse(&DefaultConfig{}, []byte(test))
 
-	// for _, t := range tokens {
-	// 	str := ast.Source[t.start : t.end+1]
-	// 	fmt.Println(fmt.Sprintf("%d [%s]", t.tag, str))
-	// }
+	for _, t := range tokens {
+		str := source[t.start : t.end+1]
+		Log.Debug("%d [%s]\n", t.tag, str)
+	}
 
 	_ = tokens
-	_ = ast
+	// _ = ast
 }
 
 // func matchTokens(str string, tokens []Token) error {

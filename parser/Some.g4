@@ -1,100 +1,4 @@
-grammar Some
-	;
-
-/// *** PARSER ***
-
-source
-	: TERMINATOR
-	| functionDecl* EOF
-	;
-
-functionDecl
-	: 'fn' WS IDENTIFIER (function | signature) TERMINATOR
-	;
-
-function
-	: signature block
-	;
-
-signature
-	: parameters // result?
-	;
-
-// result : parameters | goType ;
-
-parameters
-	: '(' (identifierList ','?)? ')'
-	;
-
-identifierList
-	: IDENTIFIER (',' IDENTIFIER)*
-	;
-
-block
-	: '{' WS statementList WS '}'
-	;
-
-statementList
-	: statement*
-	;
-
-statement
-	: simpleStmt
-	| TERMINATOR
-	;
-
-simpleStmt
-	: emptyStmt
-	| expressionStmt
-	;
-
-emptyStmt
-	: ';'
-	;
-
-expressionStmt
-	: expression
-	;
-
-expression
-	: unaryExpr
-	| expression BINARY_OP expression
-	;
-
-unaryExpr
-	: primaryExpr
-	| UNARY_OP expression
-	;
-
-primaryExpr
-	: operand
-	;
-
-operand
-	: literal
-	| operandName
-	| '(' expression ')'
-	;
-
-literal
-	: basicLit
-	;
-
-basicLit
-	: INT_LIT
-	| FLOAT_LIT
-	| IMAGINARY_LIT
-	| RUNE_LIT
-	| STRING_LIT
-	;
-
-operandName
-	: IDENTIFIER
-	| qualifiedIdent
-	;
-
-qualifiedIdent
-	: IDENTIFIER '.' IDENTIFIER
+lexer grammar Some
 	;
 
 /// *** LEXER ***
@@ -590,11 +494,13 @@ fragment UNICODE_LETTER
 	;
 
 WS
-	: [ \t]+
+	: [ \t]+ -> channel(HIDDEN)
 	;
 
 TERMINATOR
-	: [\r\n]+
+	: '\r' '\n'
+	| '\n'
+	| '\r'
 	;
 
 COMMENT
@@ -605,3 +511,4 @@ COMMENT
 LINE_COMMENT
 	: '//' ~[\r\n]* [\r\n]
 	;
+
