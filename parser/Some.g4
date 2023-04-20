@@ -3,10 +3,6 @@ lexer grammar Some
 
 /// *** LEXER ***
 
-IDENTIFIER
-	: LETTER (LETTER | UNICODE_DIGIT)*
-	;
-
 KEYWORD
 	: 'break'
 	| 'default'
@@ -33,6 +29,10 @@ KEYWORD
 	| 'import'
 	| 'return'
 	| 'var'
+	;
+
+IDENTIFIER
+	: LETTER (LETTER | UNICODE_DIGIT)*
 	;
 
 /// OPERATORS

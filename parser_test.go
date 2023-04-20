@@ -2,6 +2,8 @@ package main
 
 import (
 	"testing"
+
+	"golang.org/x/exp/utf8string"
 )
 
 var example1 = `
@@ -23,22 +25,58 @@ var example1 = `
 
 func TestTokenizer(t *testing.T) {
 	// source := "fn main() {}"
-	source := `
-	identifier
+	source := utf8string.NewString(`fn identifier
 	break
-	&& == + - * / !
-
-	`
-	tokens := tokenize([]byte(source))
-	// tokens, ast := Parse(&DefaultConfig{}, []byte(test))
-
-	for _, t := range tokens {
-		str := source[t.start : t.end+1]
-		Log.Debug("%d [%s]\n", t.tag, str)
+	&& == + - * / 
+	!
+	129389512754912957199521
+	3.63252e-24
+	"some string"
+	Идентификатор
+	`)
+	tokens := tokenize([]byte(source.String()))
+	expected := []struct {
+		int
+		string
+	}{
+		{TokenKeyword, "fn"},
+		{TokenIdentifier, "identifier"},
+		{TokenTerminator, "\n"},
+		{TokenKeyword, "break"},
+		{TokenTerminator, "\n"},
+		{TokenBinaryOp, "&&"},
+		{TokenBinaryOp, "=="},
+		{TokenBinaryOp, "+"},
+		{TokenBinaryOp, "-"},
+		{TokenBinaryOp, "*"},
+		{TokenBinaryOp, "/"},
+		{TokenTerminator, "\n"},
+		{TokenUnaryOp, "!"},
+		{TokenTerminator, "\n"},
+		{TokenIntLit, "129389512754912957199521"},
+		{TokenTerminator, "\n"},
+		{TokenFloatLit, "3.63252e-24"},
+		{TokenTerminator, "\n"},
+		{TokenStringLit, "\"some string\""},
+		{TokenTerminator, "\n"},
+		{TokenIdentifier, "Идентификатор"},
+		{TokenTerminator, "\n"},
 	}
-
-	_ = tokens
-	// _ = ast
+	if len(tokens) != len(expected) {
+		t.Errorf("Same tokens arrays expected, got tokens=%d and expected=%d", len(tokens), len(expected))
+	}
+	tokensLen := len(tokens)
+	for i := 0; i < tokensLen; i++ {
+		lhs := tokens[i]
+		rhs := expected[i]
+		asStr := source.Slice(int(lhs.start), int(lhs.end)+1)
+		if asStr != rhs.string {
+			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
+		}
+		if lhs.tag != rhs.int {
+			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.int)
+		}
+	}
 }
 
 // func matchTokens(str string, tokens []Token) error {

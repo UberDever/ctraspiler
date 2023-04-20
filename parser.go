@@ -8,21 +8,21 @@ import (
 
 const (
 	TokenUndefined    = 0
-	TokenIdentifier   = 1
-	TokenKeyword      = 2
-	TokenBinaryOp     = 3
-	TokenUnaryOp      = 4
-	TokenIntLit       = 5
-	TokenFloatLit     = 6
-	TokenImaginaryLit = 7
-	TokenRuneLit      = 8
-	TokenLittleUValue = 9
-	TokenBigUValue    = 10
-	TokenStringLit    = 11
-	TokenWS           = 12
-	TokenTerminator   = 13
-	TokenComment      = 14
-	TokenLineComment  = 15
+	TokenKeyword      = parser.SomeKEYWORD
+	TokenIdentifier   = parser.SomeIDENTIFIER
+	TokenBinaryOp     = parser.SomeBINARY_OP
+	TokenUnaryOp      = parser.SomeUNARY_OP
+	TokenIntLit       = parser.SomeINT_LIT
+	TokenFloatLit     = parser.SomeFLOAT_LIT
+	TokenImaginaryLit = parser.SomeIMAGINARY_LIT
+	TokenRuneLit      = parser.SomeRUNE_LIT
+	TokenLittleUValue = parser.SomeLITTLE_U_VALUE
+	TokenBigUValue    = parser.SomeBIG_U_VALUE
+	TokenStringLit    = parser.SomeSTRING_LIT
+	TokenWS           = parser.SomeWS
+	TokenTerminator   = parser.SomeTERMINATOR
+	TokenComment      = parser.SomeCOMMENT
+	TokenLineComment  = parser.SomeLINE_COMMENT
 )
 
 const (
