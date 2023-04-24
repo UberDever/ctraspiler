@@ -83,13 +83,10 @@ func TestTokenizer(t *testing.T) {
 	}
 }
 
-func TestParseLiterals(t *testing.T) {
+func TestParseFunctionDecl(t *testing.T) {
 	source := utf8string.NewString(`
-		5.6
-		 14.8
-		  1235419
-		   "some"
-		"string"
+		fn main()
+		fn some(a, b)
 	`)
 	bytes := []byte(source.String())
 	tokens := tokenize(bytes)
@@ -98,3 +95,19 @@ func TestParseLiterals(t *testing.T) {
 		fmt.Println(ast.GetNodeString(node))
 	})
 }
+
+// func TestParseLiterals(t *testing.T) {
+// 	source := utf8string.NewString(`
+// 		5.6
+// 		 14.8
+// 		  1235419
+// 		   "some"
+// 		"string"
+// 	`)
+// 	bytes := []byte(source.String())
+// 	tokens := tokenize(bytes)
+// 	ast := Parse(bytes, tokens)
+// 	ast.Traverse(func(node *Node) {
+// 		fmt.Println(ast.GetNodeString(node))
+// 	})
+// }

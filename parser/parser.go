@@ -14,6 +14,7 @@ const (
 	TokenIdentifier   = antlr_parser.SomeIDENTIFIER
 	TokenBinaryOp     = antlr_parser.SomeBINARY_OP
 	TokenUnaryOp      = antlr_parser.SomeUNARY_OP
+	TokenOtherOp      = antlr_parser.SomeOTHER_OP
 	TokenIntLit       = antlr_parser.SomeINT_LIT
 	TokenFloatLit     = antlr_parser.SomeFLOAT_LIT
 	TokenImaginaryLit = antlr_parser.SomeIMAGINARY_LIT
@@ -34,7 +35,7 @@ const (
 )
 
 type Tag = int
-type Data = int
+type Index = int
 
 type Token struct {
 	tag   Tag
@@ -74,6 +75,7 @@ type Parser struct {
 	wasNL   bool
 }
 
+
 func Parse(source []byte, tokens []Token) AST {
 	ast := AST{
 		source: string(source),
@@ -83,7 +85,7 @@ func Parse(source []byte, tokens []Token) AST {
 	p := Parser{
 		ast: &ast,
 	}
-	p.skip()
+
 	p.parseSource()
 
 	return ast
@@ -102,9 +104,8 @@ func (p *Parser) parseSource() {
 			break
 		}
 
-		// TODO: Add error reporting here
+		p.advance()
 		index := p.parseLiteral()
-		p.skip()
 
 		p.ast.extra = append(p.ast.extra, index)
 		sourceNode.rhs++
@@ -142,7 +143,7 @@ func (p *Parser) parseLiteral() int {
 	return index
 }
 
-func (p *Parser) skip() {
+func (p *Parser) advance() {
 	p.wasNL = false
 	for {
 		tag := p.ast.tokens[p.current].tag
@@ -163,15 +164,21 @@ func (p *Parser) skip() {
 
 type Node struct {
 	tag      Tag
-	tokenIdx Data
-	lhs, rhs Data
+	tokenIdx Index
+	lhs, rhs Index
 }
+
+type Source struct {
+	start Index
+	end Index
+}
+
 
 type AST struct {
 	source string
 	tokens []Token
 	nodes  []Node
-	extra  []Data
+	extra  []Index
 }
 
 func (ast *AST) GetNodeString(n *Node) string {

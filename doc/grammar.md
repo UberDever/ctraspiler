@@ -7,7 +7,7 @@ TopLevelDecl:
     FunctionDecl .
 
 FunctionDecl:
-    "func" IDENTIFIER Signature FunctionBody? .
+    "fn" IDENTIFIER Signature FunctionBody? .
 
 Signature:
     Parameters Result? .
@@ -36,7 +36,7 @@ ExpressionStmt:
     Expression .
 
 DeclStmt:
-    "var" IdentifierList "=" ExpressionList .
+    "let" IdentifierList "=" ExpressionList .
 
 Assignment:
     ExpressionList AssignOp ExpressionList .
