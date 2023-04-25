@@ -9,7 +9,6 @@ import (
 
 const (
 	TokenEOF          = -1
-	TokenUndefined    = 0
 	TokenKeyword      = antlr_parser.SomeKEYWORD
 	TokenIdentifier   = antlr_parser.SomeIDENTIFIER
 	TokenBinaryOp     = antlr_parser.SomeBINARY_OP
@@ -29,25 +28,33 @@ const (
 
 type Token struct {
 	tag   Tag
-	start uint
-	end   uint
+	start int
+	end   int
 	line  int
 	col   int
 }
 
-func tryInsertSemicolon(source []byte, terminator antlr.Token, tokens []Token) []Token {
-	text := utf8string.NewString(string(source))
+var EOF = Token{
+	tag:   TokenEOF,
+	start: -1,
+	end:   -1,
+	line:  -1,
+	col:   -1,
+}
+
+func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []Token {
 	semicolon := Token{
 		tag:   TokenTerminator,
-		start: uint(terminator.GetStart()),
-		end:   uint(terminator.GetStop()),
+		start: terminator.GetStart(),
+		end:   terminator.GetStop(),
 		line:  terminator.GetLine(),
 		col:   terminator.GetColumn(),
 	}
 
 	if len(tokens) > 0 {
-		last := tokens[len(tokens)-1]
-		lexeme := text.Slice(int(last.start), int(last.end+1))
+		i := len(tokens) - 1
+		last := src.token(i)
+		lexeme := src.lexeme(src.token(i))
 
 		switch last.tag {
 		case TokenIdentifier:
@@ -80,37 +87,37 @@ func tryInsertSemicolon(source []byte, terminator antlr.Token, tokens []Token) [
 				tokens = append(tokens, semicolon)
 			}
 		}
-	} else {
-		tokens = append(tokens, semicolon)
 	}
 
 	return tokens
 }
 
-func tokenize(source []byte) []Token {
+func tokenize(source []byte) Source {
+	src := Source{text: *utf8string.NewString(string(source))}
+
 	is := antlr.NewInputStream(string(source))
 	lexer := antlr_parser.NewSome(is)
 
 	antlrTokens := lexer.GetAllTokens()
-	tokens := make([]Token, 0, len(antlrTokens))
+	src.tokens = make([]Token, 0, len(antlrTokens))
 	for i := range antlrTokens {
 		t := antlrTokens[i]
 		if t.GetChannel() == antlr.TokenHiddenChannel {
 			continue
 		}
 		if t.GetTokenType() == antlr_parser.SomeTERMINATOR {
-			tokens = tryInsertSemicolon(source, t, tokens)
+			src.tokens = tryInsertSemicolon(src, t, src.tokens)
 			continue
 		}
-		tokens = append(tokens, Token{
+		src.tokens = append(src.tokens, Token{
 			tag:   t.GetTokenType(),
-			start: uint(t.GetStart()),
-			end:   uint(t.GetStop()),
+			start: t.GetStart(),
+			end:   t.GetStop(),
 			line:  t.GetLine(),
 			col:   t.GetColumn(),
 		})
 	}
-	tokens = append(tokens, Token{tag: TokenEOF})
+	src.tokens = append(src.tokens, EOF)
 
-	return tokens
+	return src
 }

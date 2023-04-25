@@ -32,7 +32,8 @@ func TestTokenizer(t *testing.T) {
 	"some string"
 	Идентификатор
 	`)
-	tokens := tokenize([]byte(source.String()))
+	src := tokenize([]byte(source.String()))
+	tokens := src.tokens
 	expected := [...]struct {
 		int
 		string
@@ -96,12 +97,12 @@ func TestTokenizer(t *testing.T) {
 func TestParseFunctionDecl(t *testing.T) {
 	source := utf8string.NewString(`
 		fn main()
-		fn some(a, b)
+		// fn some(a, b) // some function
 	`)
 	bytes := []byte(source.String())
-	tokens := tokenize(bytes)
-	ast := Parse(bytes, tokens)
-	ast.Traverse(func(node *Node) {
+	src := tokenize(bytes)
+	ast := Parse(&src)
+	ast.Traverse(func(ast *AST, node Node) {
 		fmt.Println(ast.GetNodeString(node))
 	})
 }

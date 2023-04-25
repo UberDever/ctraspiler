@@ -1,7 +1,7 @@
 ```
 
 Source:
-    TopLevelDecl* ";" .
+    (TopLevelDecl ";")* .
     
 TopLevelDecl:
     FunctionDecl .
@@ -10,10 +10,7 @@ FunctionDecl:
     "fn" IDENTIFIER Signature FunctionBody? .
 
 Signature:
-    Parameters Result? .
-
-Parameters:
-    "(" IdentifierList? ")" .
+    "(" IdentifierList? ")" Result? .
 
 Result:
     "" . // there shall be type annotation!
@@ -22,7 +19,7 @@ FunctionBody:
     Block .
 
 Block:
-    "{" Statement* ";" "}" .
+    "{" (Statement ";")* "}" .
 
 Statement:
     EmptyStmt
@@ -70,5 +67,4 @@ IdentifierList:
 
 ExpressionList:
     Expression ("," Expression)*
-
 ```

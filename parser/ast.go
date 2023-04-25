@@ -1,6 +1,6 @@
 package parser
 
-import "golang.org/x/exp/utf8string"
+import "fmt"
 
 const (
 	NodeUndefined = -1
@@ -32,6 +32,13 @@ type Node struct {
 	lhs, rhs Index
 }
 
+var NullNode = Node{
+	tag:      NodeUndefined,
+	tokenIdx: -1,
+	lhs:      -1,
+	rhs:      -1,
+}
+
 // Source { tag: NodeSource; lhs=start; rhs=end }
 // FunctionDecl { tag: NodeFunctionDecl; lhs=signature; rhs=body }
 // Signature { tag: NodeSignature; lhs=name; rhs=parameters }
@@ -45,14 +52,12 @@ type Node struct {
 // Identifier { tag: NodeIdentifier; lhs; rhs=-1 }
 
 type AST struct {
-	source utf8string.String
-	tokens []Token
-	nodes  []Node
-	extra  []Index
+	src   *Source
+	nodes []Node
+	extra []Index
 }
 
-func (ast *AST) GetNodeString(n *Node) string {
-	t := ast.tokens[n.tokenIdx]
+func (ast *AST) GetNodeString(n Node) string {
 	switch n.tag {
 	case NodeSource:
 		return "Source"
@@ -61,21 +66,28 @@ func (ast *AST) GetNodeString(n *Node) string {
 	case NodeFloatLiteral:
 		fallthrough
 	case NodeStringLiteral:
-		return ast.source.Slice(int(t.start), int(t.end)+1)
+		return ast.src.lexeme(ast.src.token(n.lhs))
 	}
 	return "Undefined"
 
 }
 
-func (ast *AST) Traverse(f func(*Node)) {
+func (ast *AST) Traverse(f func(*AST, Node)) {
 	ast.traverseNodes(f, 0)
 }
 
 // TODO: Do ast in sexpr
 
-func (ast *AST) traverseNodes(f func(*Node), current int) {
+func (ast *AST) traverseNodes(f func(*AST, Node), current int) {
 	n := ast.nodes[current]
-	f(&n)
+	if n.tag == NodeUndefined ||
+		n.tokenIdx == -1 ||
+		n.lhs == -1 ||
+		n.rhs == -1 {
+		panic(fmt.Sprintf("While traversing nodes, encountered null node (at %d)", current))
+	}
+
+	f(ast, n)
 
 	switch n.tag {
 	case NodeSource:
