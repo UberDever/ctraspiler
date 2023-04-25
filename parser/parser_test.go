@@ -23,7 +23,7 @@ import (
 // s.func2(5.3, 4.8)
 
 func TestTokenizer(t *testing.T) {
-	source := utf8string.NewString(`fn identifier
+	source := utf8string.NewString(`fn identifier()
 	break
 	&& == + - * / 
 	!
@@ -39,6 +39,8 @@ func TestTokenizer(t *testing.T) {
 	}{
 		{TokenKeyword, "fn"},
 		{TokenIdentifier, "identifier"},
+		{TokenPunctuation, "("},
+		{TokenPunctuation, ")"},
 		{TokenTerminator, "\n"},
 		{TokenKeyword, "break"},
 		{TokenTerminator, "\n"},
@@ -48,9 +50,7 @@ func TestTokenizer(t *testing.T) {
 		{TokenBinaryOp, "-"},
 		{TokenBinaryOp, "*"},
 		{TokenBinaryOp, "/"},
-		{TokenTerminator, "\n"},
 		{TokenUnaryOp, "!"},
-		{TokenTerminator, "\n"},
 		{TokenIntLit, "129389512754912957199521"},
 		{TokenTerminator, "\n"},
 		{TokenFloatLit, "3.63252e-24"},
@@ -64,6 +64,16 @@ func TestTokenizer(t *testing.T) {
 		t.Errorf("Missed EOF at the end of token stream")
 	}
 	tokens = tokens[:len(tokens)-1]
+
+	// for i := range tokens {
+	// 	t := tokens[i]
+	// 	if t.tag == TokenTerminator {
+	// 		fmt.Print(";")
+	// 	} else {
+	// 		fmt.Print(source.Slice(int(t.start), int(t.end)+1))
+	// 	}
+	// 	fmt.Print(" ")
+	// }
 
 	if len(tokens) != len(expected) {
 		t.Errorf("Same tokens arrays expected, got tokens=%d and expected=%d", len(tokens), len(expected))

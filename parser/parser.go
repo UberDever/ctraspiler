@@ -14,7 +14,7 @@ const (
 	TokenIdentifier   = antlr_parser.SomeIDENTIFIER
 	TokenBinaryOp     = antlr_parser.SomeBINARY_OP
 	TokenUnaryOp      = antlr_parser.SomeUNARY_OP
-	TokenOtherOp      = antlr_parser.SomeOTHER_OP
+	TokenPunctuation  = antlr_parser.SomeOTHER_OP
 	TokenIntLit       = antlr_parser.SomeINT_LIT
 	TokenFloatLit     = antlr_parser.SomeFLOAT_LIT
 	TokenImaginaryLit = antlr_parser.SomeIMAGINARY_LIT
@@ -45,6 +45,58 @@ type Token struct {
 	col   int
 }
 
+func tryInsertSemicolon(source []byte, terminator antlr.Token, tokens []Token) []Token {
+	text := utf8string.NewString(string(source))
+	semicolon := Token{
+		tag:   TokenTerminator,
+		start: uint(terminator.GetStart()),
+		end:   uint(terminator.GetStop()),
+		line:  terminator.GetLine(),
+		col:   terminator.GetColumn(),
+	}
+
+	if len(tokens) > 0 {
+		last := tokens[len(tokens)-1]
+		lexeme := text.Slice(int(last.start), int(last.end+1))
+
+		switch last.tag {
+		case TokenIdentifier:
+			fallthrough
+		case TokenIntLit:
+			fallthrough
+		case TokenFloatLit:
+			fallthrough
+		case TokenImaginaryLit:
+			fallthrough
+		case TokenRuneLit:
+			fallthrough
+		case TokenStringLit:
+			tokens = append(tokens, semicolon)
+
+		case TokenKeyword:
+			if lexeme == "break" ||
+				lexeme == "continue" ||
+				lexeme == "fallthrough" ||
+				lexeme == "return" {
+				tokens = append(tokens, semicolon)
+
+			}
+		case TokenPunctuation:
+			if lexeme == "++" ||
+				lexeme == "--" ||
+				lexeme == ")" ||
+				lexeme == "]" ||
+				lexeme == "}" {
+				tokens = append(tokens, semicolon)
+			}
+		}
+	} else {
+		tokens = append(tokens, semicolon)
+	}
+
+	return tokens
+}
+
 func tokenize(source []byte) []Token {
 	is := antlr.NewInputStream(string(source))
 	lexer := antlr_parser.NewSome(is)
@@ -54,6 +106,10 @@ func tokenize(source []byte) []Token {
 	for i := range antlrTokens {
 		t := antlrTokens[i]
 		if t.GetChannel() == antlr.TokenHiddenChannel {
+			continue
+		}
+		if t.GetTokenType() == antlr_parser.SomeTERMINATOR {
+			tokens = tryInsertSemicolon(source, t, tokens)
 			continue
 		}
 		tokens = append(tokens, Token{
@@ -74,7 +130,6 @@ type Parser struct {
 	current int
 	wasNL   bool
 }
-
 
 func Parse(source []byte, tokens []Token) AST {
 	ast := AST{
@@ -170,9 +225,8 @@ type Node struct {
 
 type Source struct {
 	start Index
-	end Index
+	end   Index
 }
-
 
 type AST struct {
 	source string
