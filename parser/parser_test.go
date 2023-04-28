@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"testing"
 
 	"golang.org/x/exp/utf8string"
@@ -97,13 +96,14 @@ func TestTokenizer(t *testing.T) {
 func TestParseFunctionDecl(t *testing.T) {
 	source := utf8string.NewString(`
 		fn main()
-		// fn some(a, b) // some function
+		fn some(a, b) // some function
 	`)
 	bytes := []byte(source.String())
 	src := tokenize(bytes)
 	ast := Parse(&src)
 	ast.Traverse(func(ast *AST, node Node) {
-		fmt.Println(ast.GetNodeString(node))
+		s := ast.GetNodeString(node)
+		t.Log(s)
 	})
 }
 

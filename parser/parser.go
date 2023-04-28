@@ -1,9 +1,5 @@
 package parser
 
-import (
-	"fmt"
-)
-
 type Tag = int
 type Index = int
 
@@ -13,15 +9,16 @@ type Parser struct {
 
 	current   int
 	line, col int
+	scratch   []Index
 }
 
 func (p *Parser) next() {
 	for {
 		p.current++
-		current := p.src.token(p.current)
-		p.line = current.line
-		p.col = current.col
-		tag := current.tag
+		c := p.src.token(p.current)
+		p.line = c.line
+		p.col = c.col
+		tag := c.tag
 
 		if tag == TokenLineComment {
 			continue
@@ -36,15 +33,15 @@ func (p *Parser) addNode(n Node) int {
 }
 
 func (p *Parser) matchTag(tag Tag) bool {
-	current := p.src.token(p.current)
-	return current.tag == tag
+	c := p.src.token(p.current)
+	return c.tag == tag
 }
 
 func (p *Parser) expectTag(tag Tag) {
-	current := p.src.token(p.current)
+	c := p.src.token(p.current)
 	if !p.matchTag(tag) {
-		expected := fmt.Sprintf("Expected %d", tag)
-		panic(expected + ", but got " + p.src.trace(current))
+		panic("\nExpected\n" + p.src.trace(tag, "", -1, -1) +
+			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
 	}
 	p.next()
 }
@@ -55,19 +52,31 @@ func (p *Parser) matchToken(tag Tag, lexeme string) bool {
 }
 
 func (p *Parser) expectToken(tag Tag, lexeme string) {
-	current := p.src.token(p.current)
+	c := p.src.token(p.current)
 	if !p.matchToken(tag, lexeme) {
-		expected := fmt.Sprintf("Expected %d/%s", tag, lexeme)
-		panic(expected + ", but got " + p.src.trace(current))
+		panic("\nExpected\n" + p.src.trace(tag, lexeme, -1, -1) +
+			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
 	}
 	p.next()
 }
 
 func (p *Parser) expectTerminator() {
-	current := p.src.token(p.current)
-	if current.tag != TokenTerminator {
-		panic("Expected semicolon near " + p.src.trace(current))
+	c := p.src.token(p.current)
+	if c.tag != TokenTerminator {
+		panic("Expected semicolon near " + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
 	}
+}
+
+func (p *Parser) restoreScratch(old_size int) {
+	p.scratch = p.scratch[:old_size]
+}
+
+func (p *Parser) addScratchToExtra(scratch_top int) (start int, end int) {
+	slice := p.scratch[scratch_top:]
+	p.ast.extra = append(p.ast.extra, slice...)
+	start = len(p.ast.extra) - len(slice)
+	end = len(p.ast.extra)
+	return
 }
 
 func Parse(src *Source) AST {
@@ -80,6 +89,7 @@ func Parse(src *Source) AST {
 		current: -1,
 		line:    0,
 		col:     0,
+		scratch: make([]Index, 0, 64),
 	}
 
 	p.parseSource()
@@ -91,6 +101,8 @@ func (p *Parser) parseSource() {
 	p.ast.nodes = append(p.ast.nodes, Node{
 		tag: NodeSource,
 	})
+	scratch_top := len(p.scratch)
+	defer p.restoreScratch(scratch_top)
 
 	for {
 		p.next()
@@ -101,25 +113,30 @@ func (p *Parser) parseSource() {
 		}
 
 		if !p.matchToken(TokenKeyword, "fn") {
-			tokenTrace := p.src.trace(p.src.token(p.current))
+			c := p.src.token(p.current)
+			tokenTrace := p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col)
 			panic("At " + tokenTrace + " expected function declaration")
 		}
 
 		index := p.parseFunctionDecl()
-		p.ast.extra = append(p.ast.extra, index)
-		p.ast.nodes[0].rhs++
+		p.scratch = append(p.scratch, index)
 	}
-
+	p.ast.nodes[0].lhs, p.ast.nodes[0].rhs = p.addScratchToExtra(scratch_top)
 }
 
 func (p *Parser) parseFunctionDecl() int {
 	n := NullNode
-	n.tag, n.tokenIdx = NodeFunctionDecl, p.current
+	n.tag = NodeFunctionDecl
 
 	p.expectToken(TokenKeyword, "fn")
+	n.tokenIdx = p.current
 	p.expectTag(TokenIdentifier)
+
 	n.lhs = p.parseSignature()
-	n.rhs = p.parseBlock()
+	n.rhs = 0
+	if p.matchToken(TokenPunctuation, "{") {
+		n.rhs = p.parseBlock()
+	}
 	p.expectTerminator()
 
 	return p.addNode(n)
@@ -127,16 +144,17 @@ func (p *Parser) parseFunctionDecl() int {
 
 func (p *Parser) parseSignature() int {
 	n := NullNode
-	n.tag, n.tokenIdx = NodeParameters, p.current
+	n.tag, n.tokenIdx = NodeSignature, p.current
+	n.rhs = 0
 
+	n.lhs = 0
 	p.expectToken(TokenPunctuation, "(")
 	if p.matchToken(TokenPunctuation, ")") {
 		p.next()
-		n.lhs, n.rhs = 0, 0
 		return p.addNode(n)
 	}
 
-	p.parseIdentifierList()
+	n.lhs = p.parseIdentifierList()
 	p.expectToken(TokenPunctuation, ")")
 
 	return p.addNode(n)
@@ -151,7 +169,25 @@ func (p *Parser) parseBlock() int {
 
 func (p *Parser) parseIdentifierList() int {
 	n := NullNode
+	n.tag, n.tokenIdx = NodeIdentifierList, p.current
 
+	scratch_top := len(p.scratch)
+	defer p.restoreScratch(scratch_top)
+
+	p.scratch = append(p.scratch, p.current)
+	p.expectTag(TokenIdentifier)
+	for {
+		if p.matchToken(TokenPunctuation, ",") {
+			p.next()
+
+			p.scratch = append(p.scratch, p.current)
+			p.expectTag(TokenIdentifier)
+		} else {
+			break
+		}
+	}
+
+	n.lhs, n.rhs = p.addScratchToExtra(scratch_top)
 	return p.addNode(n)
 }
 

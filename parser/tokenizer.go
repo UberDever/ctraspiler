@@ -54,7 +54,6 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 	if len(tokens) > 0 {
 		i := len(tokens) - 1
 		last := src.token(i)
-		lexeme := src.lexeme(src.token(i))
 
 		switch last.tag {
 		case TokenIdentifier:
@@ -71,6 +70,7 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 			tokens = append(tokens, semicolon)
 
 		case TokenKeyword:
+			lexeme := src.lexeme(src.token(i))
 			if lexeme == "break" ||
 				lexeme == "continue" ||
 				lexeme == "fallthrough" ||
@@ -79,6 +79,7 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 
 			}
 		case TokenPunctuation:
+			lexeme := src.lexeme(src.token(i))
 			if lexeme == "++" ||
 				lexeme == "--" ||
 				lexeme == ")" ||
@@ -105,7 +106,8 @@ func tokenize(source []byte) Source {
 		if t.GetChannel() == antlr.TokenHiddenChannel {
 			continue
 		}
-		if t.GetTokenType() == antlr_parser.SomeTERMINATOR {
+		if t.GetTokenType() == antlr_parser.SomeTERMINATOR ||
+			t.GetTokenType() == antlr_parser.SomeLINE_COMMENT {
 			src.tokens = tryInsertSemicolon(src, t, src.tokens)
 			continue
 		}
