@@ -8,13 +8,15 @@ import (
 const (
 	NodeUndefined = -1
 	NodeSource    = iota
-	NodeFunctionDecl
-	NodeSignature
 	NodeBlock
-	NodeCall
-	NodeLetDecl
 	NodeIdentifierList
 	NodeExpressionList
+
+	NodeFunctionDecl
+	NodeSignature
+	NodeConstDecl
+
+	NodeCall
 
 	NodeBinaryPlus
 	NodeBinaryMinus
@@ -29,6 +31,21 @@ const (
 	NodeStringLiteral
 	NodeIdentifier
 )
+
+// Source { idx=...; lhs=start; rhs=end }
+// FunctionDecl { idx=name; lhs=signature; rhs=body }
+// Signature { idx=...; lhs=parameters; rhs=0 }
+// Parameters { idx=...; lhs=start; rhs=end }
+// ConstDecl { idx=const; lhs=identifierList; rhs=expList }
+
+// Block { tag: NodeBlock; lhs=start; rhs=end }
+// Call { tag: NodeCall; lhs=expression; rhs=body }
+// IdentifierList { idx=...; lhs=start; rhs=end }
+// ExpressionList { tag: NodeExpressionList; lhs=start; rhs=end }
+// BinaryOp { tag: NodePlus, NodeMinus...; lhs; rhs }
+// UnaryOp { tag: NodeUnaryMinus...; lhs; rhs=-1 }
+// Literal { tag: NodeIntLiteral...; lhs; rhs=-1 }
+// Identifier { tag: NodeIdentifier; lhs; rhs=-1 }
 
 type Node struct {
 	tag      Tag
@@ -73,11 +90,19 @@ func (n FunctionDecl) GetName(ast *AST) string {
 type Signature struct{ Node }
 
 func (n Signature) Children(ast *AST) []int {
-	// parameters
-	if n.lhs != 0 {
-		return []int{n.lhs}
+	return []int{n.lhs}
+}
+
+type Block struct{ Node }
+
+func (n Block) Children(ast *AST) []int {
+	// statements
+	statements := make([]int, 0, 8)
+	for i := n.lhs; i < n.rhs; i++ {
+		c_i := ast.extra[i]
+		statements = append(statements, c_i)
 	}
-	return []int{}
+	return statements
 }
 
 type IdentifierList struct{ Node }
@@ -91,21 +116,6 @@ func (n IdentifierList) Identifiers(ast *AST) []string {
 	}
 	return ids
 }
-
-// Source { idx=...; lhs=start; rhs=end }
-// FunctionDecl { idx=name; lhs=signature; rhs=body }
-// Signature { idx=...; lhs=parameters; rhs=0 }
-// Parameters { idx=...; lhs=start; rhs=end }
-
-// Block { tag: NodeBlock; lhs=start; rhs=end }
-// Call { tag: NodeCall; lhs=expression; rhs=body }
-// LetDecl { tag: NodeLetDecl; lhs=identifier; rhs=init }
-// IdentifierList { idx=...; lhs=start; rhs=end }
-// ExpressionList { tag: NodeExpressionList; lhs=start; rhs=end }
-// BinaryOp { tag: NodePlus, NodeMinus...; lhs; rhs }
-// UnaryOp { tag: NodeUnaryMinus...; lhs; rhs=-1 }
-// Literal { tag: NodeIntLiteral...; lhs; rhs=-1 }
-// Identifier { tag: NodeIdentifier; lhs; rhs=-1 }
 
 type AST struct {
 	src   *Source
@@ -121,6 +131,8 @@ func (ast *AST) GetNodeString(n Node) string {
 		return fmt.Sprintf("FunctionDecl %s", FunctionDecl{n}.GetName(ast))
 	case NodeSignature:
 		return "Signature"
+	case NodeBlock:
+		return "Block"
 	case NodeIdentifierList:
 		ids := IdentifierList{n}.Identifiers(ast)
 		return strings.Join(ids, " ")
@@ -168,10 +180,10 @@ func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, node_i int) 
 			ast.traverseNode(onEnter, onExit, c)
 		}
 	case NodeBlock:
-		// n_ := Signature{n}.Children(ast)
-		// for _, c := range n_ {
-		// 	ast.traverseNode(f, c)
-		// }
+		n_ := Block{n}.Children(ast)
+		for _, c := range n_ {
+			ast.traverseNode(onEnter, onExit, c)
+		}
 	}
 
 	onExit(ast, n)

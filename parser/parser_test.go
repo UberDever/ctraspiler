@@ -6,20 +6,15 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-// type Some struct {
-// 	result f32
-// }
-
-// fn func1(a i8, b f32, c f64) i64 {
-// 	return a * b + c
-// }
-
-// fn func2(a Some, b f32, c f64) {
-// 	a.result = b + c
-// }
-
-// s := Some{}
-// s.func2(5.3, 4.8)
+func testAST(lhs string, rhs string) (result string, expected string) {
+	source := utf8string.NewString(lhs)
+	expected = unformatSExpr(utf8string.NewString(rhs).String())
+	bytes := []byte(source.String())
+	src := tokenize(bytes)
+	ast := Parse(&src)
+	result = ast.dump(false)
+	return
+}
 
 func TestTokenizer(t *testing.T) {
 	source := utf8string.NewString(`fn identifier()
@@ -93,6 +88,42 @@ func TestTokenizer(t *testing.T) {
 	}
 }
 
+func TestParseFunctionDecl(t *testing.T) {
+	lhs := `
+		fn main()
+		fn some(a, b) // some function
+	`
+	rhs := `
+		(Source
+			(FunctionDecl main 
+				(Signature ()))
+			(FunctionDecl some 
+				(Signature (a b))))
+	`
+	result, expected := testAST(lhs, rhs)
+	if result != expected {
+		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	}
+}
+
+func TestParseFunctionWithBody(t *testing.T) {
+	lhs := `
+		fn main() {
+			const a = 5
+		}
+	`
+	rhs := `
+	(Source
+		(FunctionDecl main 
+			(Signature ())
+				(Block 
+					(ConstDecl (a) (5)))))`
+	result, expected := testAST(lhs, rhs)
+	if result != expected {
+		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	}
+}
+
 func TestSExprFormatting(t *testing.T) {
 	source := utf8string.NewString(`
 		fn main()
@@ -108,41 +139,3 @@ func TestSExprFormatting(t *testing.T) {
 		t.Errorf("SExpr are not equal {%#v} {%#v}", dump, unformatted)
 	}
 }
-
-func TestParseFunctionDecl(t *testing.T) {
-	source := utf8string.NewString(`
-		fn main()
-		fn some(a, b) // some function
-	`)
-	expected := unformatSExpr(utf8string.NewString(`
-		(Source
-			(FunctionDecl main 
-				(Signature))
-			(FunctionDecl some 
-				(Signature (a b))
-				))
-	`).String())
-	bytes := []byte(source.String())
-	src := tokenize(bytes)
-	ast := Parse(&src)
-	dump := ast.dump(false)
-	if dump != expected {
-		t.Errorf("AST are not equal {%#v} {%#v}", dump, expected)
-	}
-}
-
-// func TestParseLiterals(t *testing.T) {
-// 	source := utf8string.NewString(`
-// 		5.6
-// 		 14.8
-// 		  1235419
-// 		   "some"
-// 		"string"
-// 	`)
-// 	bytes := []byte(source.String())
-// 	tokens := tokenize(bytes)
-// 	ast := Parse(bytes, tokens)
-// 	ast.Traverse(func(node *Node) {
-// 		fmt.Println(ast.GetNodeString(node))
-// 	})
-// }

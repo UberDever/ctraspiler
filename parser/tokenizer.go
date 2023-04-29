@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
+// NOTE: This was a bad idea - full mapping of tokens is better solution
 const (
 	TokenEOF          = -1
 	TokenKeyword      = antlr_parser.SomeKEYWORD

@@ -63,8 +63,9 @@ func (p *Parser) expectToken(tag Tag, lexeme string) {
 func (p *Parser) expectTerminator() {
 	c := p.src.token(p.current)
 	if c.tag != TokenTerminator {
-		panic("Expected semicolon near " + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
+		panic("Expected semicolon\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
 	}
+	p.next()
 }
 
 func (p *Parser) restoreScratch(old_size int) {
@@ -104,9 +105,9 @@ func (p *Parser) parseSource() {
 	scratch_top := len(p.scratch)
 	defer p.restoreScratch(scratch_top)
 
-	for {
-		p.next()
+	p.next()
 
+	for {
 		t := p.src.token(p.current)
 		if t.tag == TokenEOF {
 			break
@@ -115,7 +116,7 @@ func (p *Parser) parseSource() {
 		if !p.matchToken(TokenKeyword, "fn") {
 			c := p.src.token(p.current)
 			tokenTrace := p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col)
-			panic("At " + tokenTrace + " expected function declaration")
+			panic("At\n" + tokenTrace + "expected function declaration")
 		}
 
 		index := p.parseFunctionDecl()
@@ -151,6 +152,7 @@ func (p *Parser) parseSignature() int {
 	p.expectToken(TokenPunctuation, "(")
 	if p.matchToken(TokenPunctuation, ")") {
 		p.next()
+		n.lhs = p.addNode(Node{tag: NodeIdentifierList})
 		return p.addNode(n)
 	}
 
@@ -164,8 +166,94 @@ func (p *Parser) parseBlock() int {
 	n := NullNode
 	n.tag, n.tokenIdx = NodeBlock, p.current
 
+	scratch_top := len(p.scratch)
+	defer p.restoreScratch(scratch_top)
+
+	p.expectToken(TokenPunctuation, "{")
+	p.scratch = append(p.scratch, p.current)
+	p.parseStatement()
+	p.expectTerminator()
+	// p.expectTag(TokenIdentifier)
+	// for {
+	// 	if p.matchToken(TokenPunctuation, ",") {
+	// 		p.next()
+
+	// 		p.scratch = append(p.scratch, p.current)
+	// 		p.expectTag(TokenIdentifier)
+	// 	} else {
+	// 		break
+	// 	}
+	// }
+	p.expectToken(TokenPunctuation, "}")
+	n.lhs, n.rhs = p.addScratchToExtra(scratch_top)
 	return p.addNode(n)
 }
+
+func (p *Parser) parseStatement() int {
+	if p.matchToken(TokenKeyword, "const") {
+		return p.parseConstDecl()
+	} else {
+		// expression [list]
+		panic("parseStatement unimplemented")
+	}
+}
+
+func (p *Parser) parseConstDecl() int {
+	n := NullNode
+	n.tag, n.tokenIdx = NodeConstDecl, p.current
+
+	p.expectToken(TokenKeyword, "const")
+	n.lhs = p.parseIdentifierList()
+	p.expectToken(TokenPunctuation, "=")
+	n.rhs = p.parseExpressionList()
+
+	return p.addNode(n)
+}
+
+func (p *Parser) parseExpressionList() int {
+	n := NullNode
+	n.tag, n.tokenIdx = NodeExpressionList, p.current
+
+	scratch_top := len(p.scratch)
+	defer p.restoreScratch(scratch_top)
+
+	p.scratch = append(p.scratch, p.parseExpression())
+	for {
+		// if p.matchToken(TokenPunctuation, ",") {
+		// 	p.next()
+
+		// 	p.scratch = append(p.scratch, p.current)
+		// 	p.expectTag(TokenIdentifier)
+		// } else {
+		// 	break
+		// }
+	}
+
+	n.lhs, n.rhs = p.addScratchToExtra(scratch_top)
+	return p.addNode(n)
+}
+
+func (p *Parser) parseExpression() int {
+	panic("parseExpression unimplemented")
+	// if p.matchTag(TokenUnaryOp) {
+	// 	return p.parseUnary()
+	// }
+	// if p.matchTag(TokenBinaryOp) {
+	// 	if p.matchToken(TokenBinaryOp, "+") {
+
+	// 	}
+	// 	p.expectTag(TokenBinaryOp)
+	// }
+	// return p.parsePrimary()
+}
+
+// func (p *Parser) parseUnary() int {
+
+// }
+
+// func (p *Parser) parsePrimary() int {
+
+// }
 
 func (p *Parser) parseIdentifierList() int {
 	n := NullNode
@@ -191,31 +279,21 @@ func (p *Parser) parseIdentifierList() int {
 	return p.addNode(n)
 }
 
-// func (p *Parser) parseLiteral() int {
-// 	t := p.ast.tokens[p.token_i]
-// 	switch t.tag {
-// 	case TokenIntLit:
-// 		p.ast.nodes = append(p.ast.nodes, Node{
-// 			tag:      NodeIntLiteral,
-// 			tokenIdx: p.token_i,
-// 		})
-// 		p.token_i++
-// 	case TokenFloatLit:
-// 		p.ast.nodes = append(p.ast.nodes, Node{
-// 			tag:      NodeFloatLiteral,
-// 			tokenIdx: p.token_i,
-// 		})
-// 		p.token_i++
-// 	case TokenStringLit:
-// 		p.ast.nodes = append(p.ast.nodes, Node{
-// 			tag:      NodeStringLiteral,
-// 			tokenIdx: p.token_i,
-// 		})
-// 		p.token_i++
+func (p *Parser) parseLiteral() int {
+	n := NullNode
+	n.tokenIdx = p.current
+	n.lhs, n.rhs = 0, 0
 
-// 	default:
-// 		return -1
-// 	}
-// 	index := len(p.ast.nodes) - 1
-// 	return index
-// }
+	if p.matchTag(TokenIntLit) {
+		n.tag = NodeIntLiteral
+	} else if p.matchTag(TokenFloatLit) {
+		n.tag = NodeFloatLiteral
+	} else if p.matchTag(TokenStringLit) {
+		n.tag = NodeStringLiteral
+	} else {
+		panic("parseLiteral unimplemented")
+	}
+
+	p.next()
+	return p.addNode(n)
+}

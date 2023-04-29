@@ -1,51 +1,66 @@
-lexer grammar Some;
+lexer grammar Some
+	;
 
 /// *** LEXER ***
 
-KEYWORD:
-	'break'
-	| 'default'
-	| 'fn'
-	| 'interface'
-	| 'select'
-	| 'case'
-	| 'defer'
-	| 'go'
-	| 'map'
-	| 'struct'
-	| 'chan'
-	| 'else'
-	| 'goto'
-	| 'package'
-	| 'switch'
+KEYWORD
+	: 'fn'
 	| 'const'
-	| 'fallthrough'
-	| 'if'
-	| 'range'
-	| 'type'
-	| 'continue'
-	| 'for'
-	| 'import'
-	| 'return'
-	| 'var'
-	| 'let';
+	| 'break'
+	;
 
-IDENTIFIER: LETTER (LETTER | UNICODE_DIGIT)*;
+IDENTIFIER
+	: LETTER (LETTER | UNICODE_DIGIT)*
+	;
 
 /// OPERATORS
 
-BINARY_OP: '||' | '&&' | REL_OP | ADD_OP | MUL_OP;
+BINARY_OP
+	: '||'
+	| '&&'
+	| REL_OP
+	| ADD_OP
+	| MUL_OP
+	;
 
-fragment REL_OP: '==' | '!=' | '<' | '<=' | '>' | '>=';
+fragment REL_OP
+	: '=='
+	| '!='
+	| '<'
+	| '<='
+	| '>'
+	| '>='
+	;
 
-fragment ADD_OP: '+' | '-' | '|' | '^';
+fragment ADD_OP
+	: '+'
+	| '-'
+	| '|'
+	| '^'
+	;
 
-fragment MUL_OP: '*' | '/' | '%' | '<<' | '>>' | '&' | '&^';
+fragment MUL_OP
+	: '*'
+	| '/'
+	| '%'
+	| '<<'
+	| '>>'
+	| '&'
+	| '&^'
+	;
 
-UNARY_OP: '+' | '-' | '!' | '^' | '*' | '&' | '<-';
+UNARY_OP
+	: '+'
+	| '-'
+	| '!'
+	| '^'
+	| '*'
+	| '&'
+	| '<-'
+	;
 
-OTHER_OP:
-	'('
+OTHER_OP
+	: '('
 	| ')'
 	| '{'
 	| '}'
@@ -59,51 +74,81 @@ OTHER_OP:
 	| '++'
 	| '--'
 	| ':='
-	| '...';
+	| '...'
+	;
 
 /// LITERALS
 
-INT_LIT: DECIMAL_LIT | OCTAL_LIT | HEX_LIT;
+INT_LIT
+	: DECIMAL_LIT
+	| OCTAL_LIT
+	| HEX_LIT
+	;
 
-fragment DECIMAL_LIT: [1-9] DECIMAL_DIGIT*;
+fragment DECIMAL_LIT
+	: [1-9] DECIMAL_DIGIT*
+	;
 
-fragment OCTAL_LIT: '0' OCTAL_DIGIT*;
+fragment OCTAL_LIT
+	: '0' OCTAL_DIGIT*
+	;
 
-fragment HEX_LIT: '0' ('x' | 'X') HEX_DIGIT+;
+fragment HEX_LIT
+	: '0' ('x' | 'X') HEX_DIGIT+
+	;
 
-FLOAT_LIT:
-	DECIMALS '.' DECIMALS? EXPONENT?
+FLOAT_LIT
+	: DECIMALS '.' DECIMALS? EXPONENT?
 	| DECIMALS EXPONENT
-	| '.' DECIMALS EXPONENT?;
+	| '.' DECIMALS EXPONENT?
+	;
 
-fragment DECIMALS: DECIMAL_DIGIT+;
+fragment DECIMALS
+	: DECIMAL_DIGIT+
+	;
 
-fragment EXPONENT: ('e' | 'E') ('+' | '-')? DECIMALS;
+fragment EXPONENT
+	: ('e' | 'E') ('+' | '-')? DECIMALS
+	;
 
-IMAGINARY_LIT: (DECIMALS | FLOAT_LIT) 'i';
+IMAGINARY_LIT
+	: (DECIMALS | FLOAT_LIT) 'i'
+	;
 
-RUNE_LIT: '\'' (UNICODE_VALUE | BYTE_VALUE) '\'';
+RUNE_LIT
+	: '\'' (UNICODE_VALUE | BYTE_VALUE) '\''
+	;
 
-fragment UNICODE_VALUE:
-	UNICODE_CHAR
+fragment UNICODE_VALUE
+	: UNICODE_CHAR
 	| LITTLE_U_VALUE
 	| BIG_U_VALUE
-	| ESCAPED_CHAR;
+	| ESCAPED_CHAR
+	;
 
-fragment BYTE_VALUE: OCTAL_BYTE_VALUE | HEX_BYTE_VALUE;
+fragment BYTE_VALUE
+	: OCTAL_BYTE_VALUE
+	| HEX_BYTE_VALUE
+	;
 
-fragment OCTAL_BYTE_VALUE:
-	'\\' OCTAL_DIGIT OCTAL_DIGIT OCTAL_DIGIT;
+fragment OCTAL_BYTE_VALUE
+	: '\\' OCTAL_DIGIT OCTAL_DIGIT OCTAL_DIGIT
+	;
 
-fragment HEX_BYTE_VALUE: '\\' 'x' HEX_DIGIT HEX_DIGIT;
+fragment HEX_BYTE_VALUE
+	: '\\' 'x' HEX_DIGIT HEX_DIGIT
+	;
 
-LITTLE_U_VALUE: '\\u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT;
+LITTLE_U_VALUE
+	: '\\u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
+	;
 
-BIG_U_VALUE:
-	'\\U' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT;
+BIG_U_VALUE
+	: '\\U' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
+	;
 
-fragment ESCAPED_CHAR:
-	'\\' (
+fragment ESCAPED_CHAR
+	: '\\' (
 		'a'
 		| 'b'
 		| 'f'
@@ -114,31 +159,51 @@ fragment ESCAPED_CHAR:
 		| '\\'
 		| '\''
 		| '"'
-	);
+	)
+	;
 
-STRING_LIT: RAW_STRING_LIT | INTERPRETED_STRING_LIT;
+STRING_LIT
+	: RAW_STRING_LIT
+	| INTERPRETED_STRING_LIT
+	;
 
-fragment RAW_STRING_LIT: '`' (UNICODE_CHAR | NEWLINE)* '`';
+fragment RAW_STRING_LIT
+	: '`' (UNICODE_CHAR | NEWLINE)* '`'
+	;
 
-fragment INTERPRETED_STRING_LIT:
-	'"' (UNICODE_VALUE | BYTE_VALUE)* '"';
+fragment INTERPRETED_STRING_LIT
+	: '"' (UNICODE_VALUE | BYTE_VALUE)* '"'
+	;
 
 /// BASIC
 
-fragment LETTER: UNICODE_LETTER | '_';
+fragment LETTER
+	: UNICODE_LETTER
+	| '_'
+	;
 
-fragment DECIMAL_DIGIT: [0-9];
+fragment DECIMAL_DIGIT
+	: [0-9]
+	;
 
-fragment OCTAL_DIGIT: [0-7];
+fragment OCTAL_DIGIT
+	: [0-7]
+	;
 
-fragment HEX_DIGIT: [0-9a-fA-F];
+fragment HEX_DIGIT
+	: [0-9a-fA-F]
+	;
 
-fragment NEWLINE: [\u000A];
+fragment NEWLINE
+	: [\u000A]
+	;
 
-fragment UNICODE_CHAR: ~[\u000A];
+fragment UNICODE_CHAR
+	: ~[\u000A]
+	;
 
-fragment UNICODE_DIGIT:
-	[\u0030-\u0039]
+fragment UNICODE_DIGIT
+	: [\u0030-\u0039]
 	| [\u0660-\u0669]
 	| [\u06F0-\u06F9]
 	| [\u0966-\u096F]
@@ -157,10 +222,11 @@ fragment UNICODE_DIGIT:
 	| [\u1369-\u1371]
 	| [\u17E0-\u17E9]
 	| [\u1810-\u1819]
-	| [\uFF10-\uFF19];
+	| [\uFF10-\uFF19]
+	;
 
-fragment UNICODE_LETTER:
-	[\u0041-\u005A]
+fragment UNICODE_LETTER
+	: [\u0041-\u005A]
 	| [\u0061-\u007A]
 	| [\u00AA]
 	| [\u00B5]
@@ -420,11 +486,20 @@ fragment UNICODE_LETTER:
 	| [\uFFC2-\uFFC7]
 	| [\uFFCA-\uFFCF]
 	| [\uFFD2-\uFFD7]
-	| [\uFFDA-\uFFDC];
+	| [\uFFDA-\uFFDC]
+	;
 
-WS: [ \t]+ -> channel(HIDDEN);
+WS
+	: [ \t]+ -> channel(HIDDEN)
+	;
 
-TERMINATOR: '\r' '\n' | '\n' | '\r';
+TERMINATOR
+	: '\r' '\n'
+	| '\n'
+	| '\r'
+	;
 
-LINE_COMMENT: '//' ~[\r\n]* [\r\n];
+LINE_COMMENT
+	: '//' ~[\r\n]* [\r\n]
+	;
 

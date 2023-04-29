@@ -25,15 +25,15 @@ Statement:
     EmptyStmt
     | ExpressionStmt
     | Assignment
-    | DeclStmt .
+    | ConstDecl .
 
 EmptyStmt: .
     
 ExpressionStmt:
     Expression .
 
-DeclStmt:
-    "let" IdentifierList "=" ExpressionList .
+ConstDecl:
+    "const" IdentifierList "=" ExpressionList .
 
 Assignment:
     ExpressionList AssignOp ExpressionList .
@@ -60,7 +60,7 @@ Literal:
     INT_LIT | FLOAT_LIT | STRING_LIT .
 
 Arguments:
-    "(" ExpressionList? ","? ")"
+    "(" (ExpressionList ","?)? ")"
 
 IdentifierList:
     IDENTIFIER ("," IDENTIFIER)*

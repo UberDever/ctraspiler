@@ -22,7 +22,7 @@ func (s Source) token(index int) Token {
 func (s Source) trace(tag Tag, lexeme string, line int, col int) string {
 	str := fmt.Sprintf("\ttag = %d\n", tag)
 	if lexeme != "" {
-		str += "\tlexeme = " + lexeme + "\n"
+		str += fmt.Sprintf("\tlexeme = %#v\n", lexeme)
 	}
 	if line != -1 && col != -1 {
 		str += "\tloc = " + fmt.Sprintf("%d", line) + ":" + fmt.Sprintf("%d", col) + "\n"
