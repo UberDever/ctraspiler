@@ -113,18 +113,17 @@ type AST struct {
 	extra []Index
 }
 
-// TODO: Do ast in sexpr
 func (ast *AST) GetNodeString(n Node) string {
 	switch n.tag {
 	case NodeSource:
 		return "Source"
 	case NodeFunctionDecl:
-		return fmt.Sprintf("FunctionDecl [name=%s]", FunctionDecl{n}.GetName(ast))
+		return fmt.Sprintf("FunctionDecl %s", FunctionDecl{n}.GetName(ast))
 	case NodeSignature:
 		return "Signature"
 	case NodeIdentifierList:
 		ids := IdentifierList{n}.Identifiers(ast)
-		return strings.Join(ids, ", ")
+		return strings.Join(ids, " ")
 	case NodeIntLiteral:
 		fallthrough
 	case NodeFloatLiteral:
@@ -136,44 +135,112 @@ func (ast *AST) GetNodeString(n Node) string {
 
 }
 
-func (ast *AST) Traverse(f func(*AST, Node)) {
-	ast.traverseNode(f, 0)
+type NodeAction = func(*AST, Node)
+
+func (ast *AST) Traverse(onEnter NodeAction, onExit NodeAction) {
+	ast.traverseNode(onEnter, onExit, 0)
 }
 
-func (ast *AST) traverseNode(f func(*AST, Node), current int) {
-	n := ast.nodes[current]
+func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, node_i int) {
+	n := ast.nodes[node_i]
 	if n.tag == NodeUndefined ||
 		n.tokenIdx == -1 ||
 		n.lhs == -1 ||
 		n.rhs == -1 {
-		panic(fmt.Sprintf("While traversing nodes, encountered null node (at %d)", current))
+		panic(fmt.Sprintf("While traversing nodes, encountered null node (at %d)", node_i))
 	}
-
-	f(ast, n)
+	onEnter(ast, n)
 
 	switch n.tag {
 	case NodeSource:
 		n_ := SourceRoot{n}.Children(ast)
 		for _, c := range n_ {
-			ast.traverseNode(f, c)
+			ast.traverseNode(onEnter, onExit, c)
 		}
 	case NodeFunctionDecl:
 		n_ := FunctionDecl{n}.Children(ast)
 		for _, c := range n_ {
-			ast.traverseNode(f, c)
+			ast.traverseNode(onEnter, onExit, c)
 		}
 	case NodeSignature:
 		n_ := Signature{n}.Children(ast)
 		for _, c := range n_ {
-			ast.traverseNode(f, c)
+			ast.traverseNode(onEnter, onExit, c)
 		}
-	case NodeIdentifierList:
-		return
-
 	case NodeBlock:
 		// n_ := Signature{n}.Children(ast)
 		// for _, c := range n_ {
 		// 	ast.traverseNode(f, c)
 		// }
 	}
+
+	onExit(ast, n)
+}
+
+func formatSExpr(sexpr string) string {
+	formatted := strings.Builder{}
+	depth := -1
+	for i := range sexpr {
+		if sexpr[i] == '(' {
+			depth++
+			formatted.WriteByte('\n')
+			for j := 0; j < depth; j++ {
+				formatted.WriteString("    ")
+			}
+			formatted.WriteByte('(')
+		} else if sexpr[i] == ')' {
+			depth--
+			formatted.WriteByte(')')
+		} else {
+			formatted.WriteByte(sexpr[i])
+		}
+	}
+	return formatted.String()
+}
+
+func unformatSExpr(s string) string {
+	formatted := strings.Builder{}
+	skipWS := func(i int) (int, bool) {
+		wasSpace := false
+		for s[i] == ' ' || s[i] == '\n' || s[i] == '\t' {
+			wasSpace = true
+			i++
+			if i >= len(s) {
+				break
+			}
+		}
+		return i, wasSpace
+	}
+
+	for i := 0; i < len(s); i++ {
+		j, wasSpace := skipWS(i)
+		if j >= len(s) {
+			break
+		}
+		i = j
+		if wasSpace {
+			if s[i] != '(' && s[i] != ')' {
+				formatted.WriteByte(' ')
+			}
+		}
+		formatted.WriteByte(s[i])
+	}
+	return formatted.String()
+}
+
+func (ast *AST) dump(doFormat bool) string {
+	str := strings.Builder{}
+	onEnter := func(ast *AST, node Node) {
+		str.WriteByte('(')
+		str.WriteString(ast.GetNodeString(node))
+	}
+	onExit := func(ast *AST, node Node) {
+		str.WriteByte(')')
+	}
+	ast.Traverse(onEnter, onExit)
+
+	if doFormat {
+		return formatSExpr(str.String())
+	}
+	return str.String()
 }

@@ -93,7 +93,7 @@ func TestTokenizer(t *testing.T) {
 	}
 }
 
-func TestParseFunctionDecl(t *testing.T) {
+func TestSExprFormatting(t *testing.T) {
 	source := utf8string.NewString(`
 		fn main()
 		fn some(a, b) // some function
@@ -101,10 +101,34 @@ func TestParseFunctionDecl(t *testing.T) {
 	bytes := []byte(source.String())
 	src := tokenize(bytes)
 	ast := Parse(&src)
-	ast.Traverse(func(ast *AST, node Node) {
-		s := ast.GetNodeString(node)
-		t.Log(s)
-	})
+	dump := ast.dump(false)
+	formatted := formatSExpr(dump)
+	unformatted := unformatSExpr(formatted)
+	if dump != unformatted {
+		t.Errorf("SExpr are not equal {%#v} {%#v}", dump, unformatted)
+	}
+}
+
+func TestParseFunctionDecl(t *testing.T) {
+	source := utf8string.NewString(`
+		fn main()
+		fn some(a, b) // some function
+	`)
+	expected := unformatSExpr(utf8string.NewString(`
+		(Source
+			(FunctionDecl main 
+				(Signature))
+			(FunctionDecl some 
+				(Signature (a b))
+				))
+	`).String())
+	bytes := []byte(source.String())
+	src := tokenize(bytes)
+	ast := Parse(&src)
+	dump := ast.dump(false)
+	if dump != expected {
+		t.Errorf("AST are not equal {%#v} {%#v}", dump, expected)
+	}
 }
 
 // func TestParseLiterals(t *testing.T) {
