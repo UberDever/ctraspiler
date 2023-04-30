@@ -188,6 +188,8 @@ func (ast *AST) GetNodeString(n Node) string {
 		return "Selector"
 	case NodeCall:
 		return "Call"
+	case NodeAssignment:
+		return "Assign"
 
 	case NodeOr:
 		return "||"
@@ -293,6 +295,10 @@ func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i Index) {
 		ast.traverseNode(onEnter, onExit, n.rhs)
 
 	case NodeCall:
+		ast.traverseNode(onEnter, onExit, n.lhs)
+		ast.traverseNode(onEnter, onExit, n.rhs)
+
+	case NodeAssignment:
 		ast.traverseNode(onEnter, onExit, n.lhs)
 		ast.traverseNode(onEnter, onExit, n.rhs)
 

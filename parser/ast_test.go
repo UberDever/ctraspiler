@@ -75,6 +75,7 @@ func TestParseSomeExpressions(t *testing.T) {
 			x * 8 + 3
 			x + 3 / 4
 			f(x, x.y)
+			x, x.y = x.y, x
 		}
 	`
 	rhs := `
@@ -89,6 +90,10 @@ func TestParseSomeExpressions(t *testing.T) {
 						(ExpressionList
 							(x)
 							(Selector (x) (y))))
+					(Assign
+						(ExpressionList (x) (Selector (x) (y)))
+						(ExpressionList (Selector (x) (y)) (x))
+					)
 	)))`
 	result, expected := testAST(lhs, rhs)
 	if result != expected {
