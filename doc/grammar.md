@@ -49,22 +49,26 @@ UnaryExpr:
 
 PrimaryExpr:
     Operand
+    | PrimaryExpr Selector .
     | PrimaryExpr Arguments .
 
 Operand:
     Literal
     | IDENTIFIER
-    | "(" Expression ")"
+    | "(" Expression ")" .
 
 Literal:
     INT_LIT | FLOAT_LIT | STRING_LIT .
 
+Selector:
+    "." IDENTIFIER .
+
 Arguments:
-    "(" (ExpressionList ","?)? ")"
+    "(" ExpressionList? ")" .
 
 IdentifierList:
-    IDENTIFIER ("," IDENTIFIER)*
+    IDENTIFIER ("," IDENTIFIER)* .
 
 ExpressionList:
-    Expression ("," Expression)*
+    Expression ("," Expression)* .
 ```

@@ -20,6 +20,7 @@ const (
 	NodeSignature
 	NodeConstDecl
 
+	NodeSelector
 	NodeCall
 
 	NodeOr
@@ -37,6 +38,7 @@ const (
 
 	NodeUnaryPlus
 	NodeUnaryMinus
+	NodeNot
 
 	NodeIntLiteral
 	NodeFloatLiteral

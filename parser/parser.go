@@ -7,7 +7,7 @@ const (
 	precHighest = 7
 )
 
-func precedenceTable(lexeme string) (int, NodeTag) {
+func binaryPrecedenceAndTag(lexeme string) (int, NodeTag) {
 	switch lexeme {
 	case "||":
 		return 1, NodeOr
@@ -35,6 +35,18 @@ func precedenceTable(lexeme string) (int, NodeTag) {
 		return 5, NodeDivide
 	}
 	return precLowest, NodeUndefined
+}
+
+func unaryTag(lexeme string) NodeTag {
+	switch lexeme {
+	case "+":
+		return NodeUnaryPlus
+	case "-":
+		return NodeUnaryMinus
+	case "!":
+		return NodeNot
+	}
+	return NodeUndefined
 }
 
 type Index = int
@@ -119,6 +131,12 @@ func (p *Parser) addScratchToExtra(scratch_top int) (start int, end int) {
 	start = len(p.ast.extra) - len(slice)
 	end = len(p.ast.extra)
 	return
+}
+
+func (p *Parser) isLiteral() bool {
+	return p.matchTag(TokenIntLit) ||
+		p.matchTag(TokenFloatLit) ||
+		p.matchTag(TokenStringLit)
 }
 
 func Parse(src *Source) AST {
@@ -278,7 +296,7 @@ func (p *Parser) parseBinaryExpr(precedence int) Index {
 	lhs := p.parseUnaryExpr()
 	for {
 		op := p.src.lexeme(p.src.token(p.current))
-		opPrec, tag := precedenceTable(op)
+		opPrec, tag := binaryPrecedenceAndTag(op)
 		if opPrec < precedence {
 			return lhs
 		}
@@ -293,12 +311,54 @@ func (p *Parser) parseBinaryExpr(precedence int) Index {
 }
 
 func (p *Parser) parseUnaryExpr() Index {
-	return p.parseLiteral()
-
+	n := NullNode
+	n.tokenIdx = p.current
+	n.tag = unaryTag(p.src.lexeme(p.src.token(p.current)))
+	if n.tag == NodeUndefined {
+		return p.parsePrimaryExpr()
+	}
+	p.next()
+	n.lhs = p.parseUnaryExpr()
+	n.rhs = IndexUndefined
+	return p.addNode(n)
 }
 
 func (p *Parser) parsePrimaryExpr() Index {
-	return IndexInvalid
+	n := NullNode
+	n.tokenIdx = p.current
+	lhs := p.parseOperand()
+	if p.matchToken(TokenPunctuation, ".") {
+		p.next()
+		n.tag = NodeSelector
+		n.lhs = lhs
+		n.rhs = p.parseIdentifier()
+		return p.addNode(n)
+	} else if p.matchToken(TokenPunctuation, "(") {
+		p.next()
+		n.tag = NodeCall
+		n.lhs = lhs
+		n.rhs = IndexUndefined
+		if !p.matchToken(TokenPunctuation, ")") {
+			n.rhs = p.parseExpressionList()
+			p.expectToken(TokenPunctuation, ")")
+		}
+		p.next()
+		return p.addNode(n)
+	}
+	return lhs
+}
+
+func (p *Parser) parseOperand() Index {
+	if p.matchTag(TokenIdentifier) {
+		return p.parseIdentifier()
+	}
+	if p.isLiteral() {
+		return p.parseLiteral()
+	}
+	p.expectToken(TokenPunctuation, "(")
+	i := p.parseExpression()
+	p.expectToken(TokenPunctuation, ")")
+	return i
 }
 
 func (p *Parser) parseIdentifierList() Index {
