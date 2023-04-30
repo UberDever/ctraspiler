@@ -33,7 +33,7 @@ func TestTokenizer(t *testing.T) {
 		{TokenBinaryOp, "=="},
 		{TokenBinaryOp, "+"},
 		{TokenBinaryOp, "-"},
-		{TokenBinaryOp, "*"},
+		{TokenUnaryOp, "*"},
 		{TokenBinaryOp, "/"},
 		{TokenUnaryOp, "!"},
 		{TokenIntLit, "129389512754912957199521"},

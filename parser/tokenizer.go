@@ -10,13 +10,14 @@ import (
 type TokenTag = int
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution
+// i.e. increase granularity
 const (
 	TokenEOF          TokenTag = -1
 	TokenKeyword               = antlr_parser.SomeKEYWORD
 	TokenIdentifier            = antlr_parser.SomeIDENTIFIER
-	TokenBinaryOp              = antlr_parser.SomeBINARY_OP
-	TokenUnaryOp               = antlr_parser.SomeUNARY_OP
 	TokenPunctuation           = antlr_parser.SomeOTHER_OP
+	TokenUnaryOp               = antlr_parser.SomeUNARY_OP
+	TokenBinaryOp              = antlr_parser.SomeBINARY_OP
 	TokenIntLit                = antlr_parser.SomeINT_LIT
 	TokenFloatLit              = antlr_parser.SomeFLOAT_LIT
 	TokenImaginaryLit          = antlr_parser.SomeIMAGINARY_LIT

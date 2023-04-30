@@ -19,6 +19,7 @@ const (
 	NodeFunctionDecl
 	NodeSignature
 	NodeConstDecl
+	NodeAssignment
 
 	NodeSelector
 	NodeCall
@@ -49,8 +50,6 @@ const (
 	NodeExpressionList
 )
 
-// Block { tag: NodeBlock; lhs=start; rhs=end }
-// Call { tag: NodeCall; lhs=expression; rhs=body }
 // IdentifierList { idx=...; lhs=start; rhs=end }
 // ExpressionList { tag: NodeExpressionList; lhs=start; rhs=end }
 // BinaryOp { tag: NodePlus, NodeMinus...; lhs; rhs }
@@ -112,6 +111,7 @@ func (n Signature) Input(ast *AST) int {
 	return n.lhs
 }
 
+// tokenIdx=... lhs=start rhs=end
 type Block struct{ Node }
 
 func (n Block) Children(ast *AST) []int {
@@ -136,7 +136,10 @@ func (n ConstDecl) Expressions(ast *AST) []int {
 	return ExpressionList{rhs}.Children(ast)
 }
 
+// tokenIdx=... lhs=expr rhs=identifier
 type Selector struct{ Node }
+
+// tokenIdx=... lhs=expr rhs=exprList
 type Call struct{ Node }
 
 type IdentifierList struct{ Node }
@@ -181,6 +184,10 @@ func (ast *AST) GetNodeString(n Node) string {
 		return "Block"
 	case NodeConstDecl:
 		return "ConstDecl"
+	case NodeSelector:
+		return "Selector"
+	case NodeCall:
+		return "Call"
 
 	case NodeOr:
 		return "||"
@@ -278,6 +285,14 @@ func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i Index) {
 			ast.traverseNode(onEnter, onExit, c)
 		}
 	case NodeConstDecl:
+		ast.traverseNode(onEnter, onExit, n.lhs)
+		ast.traverseNode(onEnter, onExit, n.rhs)
+
+	case NodeSelector:
+		ast.traverseNode(onEnter, onExit, n.lhs)
+		ast.traverseNode(onEnter, onExit, n.rhs)
+
+	case NodeCall:
 		ast.traverseNode(onEnter, onExit, n.lhs)
 		ast.traverseNode(onEnter, onExit, n.rhs)
 

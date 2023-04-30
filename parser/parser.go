@@ -1,6 +1,9 @@
 package parser
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 const (
 	precLowest  = iota
@@ -63,6 +66,8 @@ type Parser struct {
 	current   Index
 	line, col int
 	scratch   []Index
+
+	saved Index
 }
 
 func (p *Parser) next() {
@@ -80,6 +85,18 @@ func (p *Parser) next() {
 	}
 }
 
+func (p *Parser) save() {
+	p.saved = p.current
+}
+
+func (p *Parser) rollback() {
+	p.current = p.saved
+	p.saved = -1
+	c := p.src.token(p.current)
+	p.line = c.line
+	p.col = c.col
+}
+
 func (p *Parser) addNode(n Node) Index {
 	p.ast.nodes = append(p.ast.nodes, n)
 	return len(p.ast.nodes) - 1
@@ -94,7 +111,8 @@ func (p *Parser) expectTag(tag TokenTag) {
 	c := p.src.token(p.current)
 	if !p.matchTag(tag) {
 		panic("\nExpected\n" + p.src.trace(tag, "", TokenEOF, TokenEOF) +
-			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
+			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col) +
+			fmt.Sprintf("Near\n%#v", p.src.near(p.current)))
 	}
 	p.next()
 }
@@ -108,7 +126,8 @@ func (p *Parser) expectToken(tag TokenTag, lexeme string) {
 	c := p.src.token(p.current)
 	if !p.matchToken(tag, lexeme) {
 		panic("\nExpected\n" + p.src.trace(tag, lexeme, TokenEOF, TokenEOF) +
-			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
+			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col) +
+			fmt.Sprintf("Line: %#v", p.src.near(p.current)))
 	}
 	p.next()
 }
@@ -116,7 +135,8 @@ func (p *Parser) expectToken(tag TokenTag, lexeme string) {
 func (p *Parser) expectTerminator() {
 	c := p.src.token(p.current)
 	if c.tag != TokenTerminator {
-		panic("Expected semicolon\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
+		panic("Expected semicolon\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col) +
+			fmt.Sprintf("Near\n%#v", p.src.near(p.current)))
 	}
 	p.next()
 }
@@ -133,6 +153,7 @@ func (p *Parser) addScratchToExtra(scratch_top int) (start int, end int) {
 	return
 }
 
+// this thing should be the norm - need to increase token granularity
 func (p *Parser) isLiteral() bool {
 	return p.matchTag(TokenIntLit) ||
 		p.matchTag(TokenFloatLit) ||
@@ -235,7 +256,10 @@ func (p *Parser) parseBlock() Index {
 	}
 
 	for !p.matchToken(TokenPunctuation, "}") {
-		p.scratch = append(p.scratch, p.parseStatement())
+		i := p.parseStatement()
+		if i != IndexInvalid {
+			p.scratch = append(p.scratch, i)
+		}
 		p.expectTerminator()
 	}
 
@@ -245,11 +269,26 @@ func (p *Parser) parseBlock() Index {
 }
 
 func (p *Parser) parseStatement() Index {
-	if p.matchToken(TokenKeyword, "const") {
+	if p.matchTag(TokenTerminator) {
+		// skip empty statement
+		return IndexInvalid
+	} else if p.matchToken(TokenKeyword, "const") {
 		return p.parseConstDecl()
 	} else {
-		// expression [list]
-		panic("parseStatement unimplemented")
+		// NOTE: need to rollback here, because I don't bother
+		// to find all terminals that start an expression
+		// if grammar lets you do that this is very convenient and the right thing
+
+		p.save()
+		i := p.parseExpression()
+		if p.matchTag(TokenTerminator) {
+			// expression statement
+			return i
+		}
+		s := p.src.lexeme(p.src.token(p.current))
+		_ = s
+		p.rollback()
+		return p.parseAssignment()
 	}
 }
 
@@ -259,6 +298,17 @@ func (p *Parser) parseConstDecl() Index {
 
 	p.expectToken(TokenKeyword, "const")
 	n.lhs = p.parseIdentifierList()
+	p.expectToken(TokenPunctuation, "=")
+	n.rhs = p.parseExpressionList()
+
+	return p.addNode(n)
+}
+
+func (p *Parser) parseAssignment() Index {
+	n := NullNode
+	n.tag, n.tokenIdx = NodeAssignment, p.current
+
+	n.lhs = p.parseExpressionList()
 	p.expectToken(TokenPunctuation, "=")
 	n.rhs = p.parseExpressionList()
 
@@ -341,6 +391,7 @@ func (p *Parser) parsePrimaryExpr() Index {
 		if !p.matchToken(TokenPunctuation, ")") {
 			n.rhs = p.parseExpressionList()
 			p.expectToken(TokenPunctuation, ")")
+			return p.addNode(n)
 		}
 		p.next()
 		return p.addNode(n)

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/utf8string"
 )
@@ -28,4 +29,34 @@ func (s Source) trace(tag TokenTag, lexeme string, line int, col int) string {
 		str += "\tloc = " + fmt.Sprintf("%d", line) + ":" + fmt.Sprintf("%d", col) + "\n"
 	}
 	return str
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func (s Source) near(i Index) string {
+	margin := 3
+	start := max(0, i-margin)
+	end := min(len(s.tokens)-1, i+margin)
+	tokens := s.tokens[start:end]
+	ss := strings.Builder{}
+	for _, t := range tokens {
+		if t.tag == TokenTerminator {
+			ss.WriteByte(';')
+			continue
+		}
+		ss.WriteString(s.lexeme(t) + " ")
+	}
+	return ss.String()
 }

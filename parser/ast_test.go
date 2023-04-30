@@ -68,6 +68,34 @@ func TestParseConstDecl(t *testing.T) {
 	}
 }
 
+func TestParseSomeExpressions(t *testing.T) {
+	lhs := `
+		fn main() {
+			const x = 8
+			x * 8 + 3
+			x + 3 / 4
+			f(x, x.y)
+		}
+	`
+	rhs := `
+	(Source
+		(FunctionDecl main 
+			(Signature ())
+				(Block 
+					(ConstDecl (x) (ExpressionList (8)))
+					(+ (* (x) (8)) (3))
+					(+ (x) (/ (3) (4)))
+					(Call (f) 
+						(ExpressionList
+							(x)
+							(Selector (x) (y))))
+	)))`
+	result, expected := testAST(lhs, rhs)
+	if result != expected {
+		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	}
+}
+
 func TestSExprFormatting(t *testing.T) {
 	source := utf8string.NewString(`
 		fn main()
