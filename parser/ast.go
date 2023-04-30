@@ -77,16 +77,23 @@ var NullNode = Node{
 	rhs:      NodeInvalid,
 }
 
-// tokenIdx=... lhs=start rhs=end
-type SourceRoot struct{ Node }
-
-func (n SourceRoot) Children(ast *AST) []int {
+func (ast AST) SourceRoot(n Node) SourceRoot {
 	decls := make([]int, 0, 8)
 	for i := n.lhs; i < n.rhs; i++ {
 		c_i := ast.extra[i]
 		decls = append(decls, c_i)
 	}
-	return decls
+	return SourceRoot{
+		declarations: decls,
+	}
+}
+
+type SourceRoot struct {
+	declarations []Index
+}
+
+func (n SourceRoot) Children(ast *AST) []Index {
+	return n.declarations
 }
 
 // tokenIdx=name lhs=signature rhs=body
@@ -172,12 +179,13 @@ type AST struct {
 	extra []Index
 }
 
-func (ast *AST) GetNodeString(n Node) string {
+// TODO: Add here a table of function pointers like NodeType -> (Node -> []Index)
+func (ast AST) GetNodeString(n Node) string {
 	switch n.tag {
 	case NodeSource:
 		return "Source"
 	case NodeFunctionDecl:
-		return fmt.Sprintf("FunctionDecl %s", FunctionDecl{n}.GetName(ast))
+		return fmt.Sprintf("FunctionDecl %s", FunctionDecl{n}.GetName(&ast))
 	case NodeSignature:
 		return "Signature"
 	case NodeBlock:
@@ -224,7 +232,7 @@ func (ast *AST) GetNodeString(n Node) string {
 		return "Not"
 
 	case NodeIdentifierList:
-		ids := IdentifierList{n}.Children(ast)
+		ids := IdentifierList{n}.Children(&ast)
 		s := make([]string, 0, len(ids))
 		for _, i := range ids {
 			c := ast.nodes[i]
@@ -252,6 +260,7 @@ func (ast *AST) Traverse(onEnter NodeAction, onExit NodeAction) {
 	ast.traverseNode(onEnter, onExit, 0)
 }
 
+// TODO: Add here a table of function pointers like NodeType -> (Node -> []Index)
 func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i Index) {
 	if i == IndexUndefined {
 		return
@@ -269,6 +278,10 @@ func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i Index) {
 	}
 
 	onEnter(ast, n)
+	// TODO: this switch should focus on concrete node treating, not node traversal
+	// cause this will be handled by the map of function pointers
+	// and likely this switch won't be present here at all, but will be somewhere
+	// else (like in code gen)
 	switch n.tag {
 	case NodeSource:
 		nodes := SourceRoot{n}.Children(ast)

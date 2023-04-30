@@ -87,13 +87,10 @@ func TestParseSomeExpressions(t *testing.T) {
 					(+ (* (x) (8)) (3))
 					(+ (x) (/ (3) (4)))
 					(Call (f) 
-						(ExpressionList
-							(x)
-							(Selector (x) (y))))
+						(ExpressionList (x) (Selector (x) (y))))
 					(Assign
 						(ExpressionList (x) (Selector (x) (y)))
-						(ExpressionList (Selector (x) (y)) (x))
-					)
+						(ExpressionList (Selector (x) (y)) (x)))
 	)))`
 	result, expected := testAST(lhs, rhs)
 	if result != expected {
