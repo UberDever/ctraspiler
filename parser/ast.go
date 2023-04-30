@@ -2,15 +2,19 @@ package parser
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
+type NodeTag = int
+
 const (
-	NodeUndefined = -1
-	NodeSource    = iota
+	NodeInvalid   NodeTag = math.MinInt
+	NodeUndefined         = -1
+)
+const (
+	NodeSource = iota
 	NodeBlock
-	NodeIdentifierList
-	NodeExpressionList
 
 	NodeFunctionDecl
 	NodeSignature
@@ -18,6 +22,14 @@ const (
 
 	NodeCall
 
+	NodeOr
+	NodeAnd
+	NodeEquals
+	NodeNotEquals
+	NodeGreaterThan
+	NodeLessThan
+	NodeGreaterThanEquals
+	NodeLessThanEquals
 	NodeBinaryPlus
 	NodeBinaryMinus
 	NodeMultiply
@@ -30,13 +42,10 @@ const (
 	NodeFloatLiteral
 	NodeStringLiteral
 	NodeIdentifier
-)
 
-// Source { idx=...; lhs=start; rhs=end }
-// FunctionDecl { idx=name; lhs=signature; rhs=body }
-// Signature { idx=...; lhs=parameters; rhs=0 }
-// Parameters { idx=...; lhs=start; rhs=end }
-// ConstDecl { idx=const; lhs=identifierList; rhs=expList }
+	NodeIdentifierList
+	NodeExpressionList
+)
 
 // Block { tag: NodeBlock; lhs=start; rhs=end }
 // Call { tag: NodeCall; lhs=expression; rhs=body }
@@ -47,23 +56,30 @@ const (
 // Literal { tag: NodeIntLiteral...; lhs; rhs=-1 }
 // Identifier { tag: NodeIdentifier; lhs; rhs=-1 }
 
+// Every node is semantically represented in the traversal process, before that
+// we store nodes as non-typed data
+// Legend for node fields representation:
+// 1. ... means field is unused/not relevant
+// 2. start/end pair means node is variadic (0 and more children)
+// 3. extra means that node has known! amount of children, stored in extra buffer
+// that amount depends on the node type
 type Node struct {
-	tag      Tag
+	tag      NodeTag
 	tokenIdx Index
 	lhs, rhs Index
 }
 
 var NullNode = Node{
-	tag:      NodeUndefined,
-	tokenIdx: -1,
-	lhs:      -1,
-	rhs:      -1,
+	tag:      NodeInvalid,
+	tokenIdx: TokenEOF,
+	lhs:      NodeInvalid,
+	rhs:      NodeInvalid,
 }
 
+// tokenIdx=... lhs=start rhs=end
 type SourceRoot struct{ Node }
 
 func (n SourceRoot) Children(ast *AST) []int {
-	// declarations
 	decls := make([]int, 0, 8)
 	for i := n.lhs; i < n.rhs; i++ {
 		c_i := ast.extra[i]
@@ -72,31 +88,31 @@ func (n SourceRoot) Children(ast *AST) []int {
 	return decls
 }
 
+// tokenIdx=name lhs=signature rhs=body
 type FunctionDecl struct{ Node }
 
-func (n FunctionDecl) Children(ast *AST) []int {
-	// block
-	if n.rhs != 0 {
-		return []int{n.lhs, n.rhs}
-	}
-	// signature
-	return []int{n.lhs}
+func (n FunctionDecl) Signature(ast *AST) int {
+	return n.lhs
+}
+
+func (n FunctionDecl) Body(ast *AST) int {
+	return n.rhs
 }
 
 func (n FunctionDecl) GetName(ast *AST) string {
 	return ast.src.lexeme(ast.src.token(n.tokenIdx))
 }
 
+// tokenIdx=... lhs=identifierList rhs=...
 type Signature struct{ Node }
 
-func (n Signature) Children(ast *AST) []int {
-	return []int{n.lhs}
+func (n Signature) Input(ast *AST) int {
+	return n.lhs
 }
 
 type Block struct{ Node }
 
 func (n Block) Children(ast *AST) []int {
-	// statements
 	statements := make([]int, 0, 8)
 	for i := n.lhs; i < n.rhs; i++ {
 		c_i := ast.extra[i]
@@ -105,16 +121,41 @@ func (n Block) Children(ast *AST) []int {
 	return statements
 }
 
+// tokenIdx=const lhs=identifierList rhs=exprList
+type ConstDecl struct{ Node }
+
+func (n ConstDecl) Identifiers(ast *AST) []int {
+	lhs := ast.nodes[n.lhs]
+	return IdentifierList{lhs}.Children(ast)
+}
+
+func (n ConstDecl) Expressions(ast *AST) []int {
+	rhs := ast.nodes[n.rhs]
+	return ExpressionList{rhs}.Children(ast)
+}
+
 type IdentifierList struct{ Node }
 
-func (n IdentifierList) Identifiers(ast *AST) []string {
+func (n IdentifierList) Children(ast *AST) []int {
 	// identifiers
-	ids := make([]string, 0, 8)
+	ids := make([]int, 0, 8)
 	for i := n.lhs; i < n.rhs; i++ {
 		c_i := ast.extra[i]
-		ids = append(ids, ast.src.lexeme(ast.src.token(c_i)))
+		ids = append(ids, c_i)
 	}
 	return ids
+}
+
+type ExpressionList struct{ Node }
+
+func (n ExpressionList) Children(ast *AST) []int {
+	// expressions
+	exprs := make([]int, 0, 8)
+	for i := n.lhs; i < n.rhs; i++ {
+		c_i := ast.extra[i]
+		exprs = append(exprs, c_i)
+	}
+	return exprs
 }
 
 type AST struct {
@@ -133,15 +174,27 @@ func (ast *AST) GetNodeString(n Node) string {
 		return "Signature"
 	case NodeBlock:
 		return "Block"
+	case NodeConstDecl:
+		return "ConstDecl"
+
 	case NodeIdentifierList:
-		ids := IdentifierList{n}.Identifiers(ast)
-		return strings.Join(ids, " ")
+		ids := IdentifierList{n}.Children(ast)
+		s := make([]string, 0, len(ids))
+		for _, i := range ids {
+			c := ast.nodes[i]
+			s = append(s, ast.src.lexeme(ast.src.token(c.tokenIdx)))
+		}
+		return strings.Join(s, " ")
+	case NodeExpressionList:
+		return "ExpressionList"
+	case NodeIdentifier:
+		return ast.src.lexeme(ast.src.token(n.tokenIdx))
 	case NodeIntLiteral:
 		fallthrough
 	case NodeFloatLiteral:
 		fallthrough
 	case NodeStringLiteral:
-		return ast.src.lexeme(ast.src.token(n.lhs))
+		return ast.src.lexeme(ast.src.token(n.tokenIdx))
 	}
 	return "Undefined"
 
@@ -153,34 +206,50 @@ func (ast *AST) Traverse(onEnter NodeAction, onExit NodeAction) {
 	ast.traverseNode(onEnter, onExit, 0)
 }
 
-func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, node_i int) {
-	n := ast.nodes[node_i]
-	if n.tag == NodeUndefined ||
-		n.tokenIdx == -1 ||
-		n.lhs == -1 ||
-		n.rhs == -1 {
-		panic(fmt.Sprintf("While traversing nodes, encountered null node (at %d)", node_i))
+func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i Index) {
+	if i == IndexUndefined {
+		return
 	}
-	onEnter(ast, n)
 
+	if i == IndexInvalid {
+		panic(fmt.Sprintf("While traversing nodes, encountered invalid index %d", i))
+	}
+	n := ast.nodes[i]
+	if n.tag == NodeInvalid ||
+		n.tokenIdx == TokenEOF ||
+		n.lhs == NodeInvalid ||
+		n.rhs == NodeInvalid {
+		panic(fmt.Sprintf("While traversing nodes, encountered null node (at %d)", i))
+	}
+
+	onEnter(ast, n)
 	switch n.tag {
 	case NodeSource:
-		n_ := SourceRoot{n}.Children(ast)
-		for _, c := range n_ {
+		nodes := SourceRoot{n}.Children(ast)
+		for _, c := range nodes {
 			ast.traverseNode(onEnter, onExit, c)
 		}
 	case NodeFunctionDecl:
-		n_ := FunctionDecl{n}.Children(ast)
-		for _, c := range n_ {
-			ast.traverseNode(onEnter, onExit, c)
-		}
+		node := FunctionDecl{n}
+		ast.traverseNode(onEnter, onExit, node.Signature(ast))
+		ast.traverseNode(onEnter, onExit, node.Body(ast))
 	case NodeSignature:
-		n_ := Signature{n}.Children(ast)
-		for _, c := range n_ {
+		node := Signature{n}
+		ast.traverseNode(onEnter, onExit, node.lhs)
+	case NodeBlock:
+		nodes := Block{n}.Children(ast)
+		for _, c := range nodes {
 			ast.traverseNode(onEnter, onExit, c)
 		}
-	case NodeBlock:
-		n_ := Block{n}.Children(ast)
+	case NodeConstDecl:
+		node := ConstDecl{n}
+		ast.traverseNode(onEnter, onExit, node.lhs)
+		ast.traverseNode(onEnter, onExit, node.rhs)
+
+	case NodeIdentifierList:
+		break // do nothing
+	case NodeExpressionList:
+		n_ := ExpressionList{n}.Children(ast)
 		for _, c := range n_ {
 			ast.traverseNode(onEnter, onExit, c)
 		}

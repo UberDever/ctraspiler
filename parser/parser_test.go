@@ -98,7 +98,8 @@ func TestParseFunctionDecl(t *testing.T) {
 			(FunctionDecl main 
 				(Signature ()))
 			(FunctionDecl some 
-				(Signature (a b))))
+				(Signature (a b)
+				)))
 	`
 	result, expected := testAST(lhs, rhs)
 	if result != expected {
@@ -109,7 +110,7 @@ func TestParseFunctionDecl(t *testing.T) {
 func TestParseFunctionWithBody(t *testing.T) {
 	lhs := `
 		fn main() {
-			const a = 5
+			const a, b = 8, 2
 		}
 	`
 	rhs := `
@@ -117,7 +118,10 @@ func TestParseFunctionWithBody(t *testing.T) {
 		(FunctionDecl main 
 			(Signature ())
 				(Block 
-					(ConstDecl (a) (5)))))`
+					(ConstDecl 
+						(a b) 
+						(ExpressionList (8) (2))
+	))))`
 	result, expected := testAST(lhs, rhs)
 	if result != expected {
 		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))

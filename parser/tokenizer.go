@@ -7,28 +7,30 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
+type TokenTag = int
+
 // NOTE: This was a bad idea - full mapping of tokens is better solution
 const (
-	TokenEOF          = -1
-	TokenKeyword      = antlr_parser.SomeKEYWORD
-	TokenIdentifier   = antlr_parser.SomeIDENTIFIER
-	TokenBinaryOp     = antlr_parser.SomeBINARY_OP
-	TokenUnaryOp      = antlr_parser.SomeUNARY_OP
-	TokenPunctuation  = antlr_parser.SomeOTHER_OP
-	TokenIntLit       = antlr_parser.SomeINT_LIT
-	TokenFloatLit     = antlr_parser.SomeFLOAT_LIT
-	TokenImaginaryLit = antlr_parser.SomeIMAGINARY_LIT
-	TokenRuneLit      = antlr_parser.SomeRUNE_LIT
-	TokenLittleUValue = antlr_parser.SomeLITTLE_U_VALUE
-	TokenBigUValue    = antlr_parser.SomeBIG_U_VALUE
-	TokenStringLit    = antlr_parser.SomeSTRING_LIT
-	TokenWS           = antlr_parser.SomeWS
-	TokenTerminator   = antlr_parser.SomeTERMINATOR
-	TokenLineComment  = antlr_parser.SomeLINE_COMMENT
+	TokenEOF          TokenTag = -1
+	TokenKeyword               = antlr_parser.SomeKEYWORD
+	TokenIdentifier            = antlr_parser.SomeIDENTIFIER
+	TokenBinaryOp              = antlr_parser.SomeBINARY_OP
+	TokenUnaryOp               = antlr_parser.SomeUNARY_OP
+	TokenPunctuation           = antlr_parser.SomeOTHER_OP
+	TokenIntLit                = antlr_parser.SomeINT_LIT
+	TokenFloatLit              = antlr_parser.SomeFLOAT_LIT
+	TokenImaginaryLit          = antlr_parser.SomeIMAGINARY_LIT
+	TokenRuneLit               = antlr_parser.SomeRUNE_LIT
+	TokenLittleUValue          = antlr_parser.SomeLITTLE_U_VALUE
+	TokenBigUValue             = antlr_parser.SomeBIG_U_VALUE
+	TokenStringLit             = antlr_parser.SomeSTRING_LIT
+	TokenWS                    = antlr_parser.SomeWS
+	TokenTerminator            = antlr_parser.SomeTERMINATOR
+	TokenLineComment           = antlr_parser.SomeLINE_COMMENT
 )
 
 type Token struct {
-	tag   Tag
+	tag   TokenTag
 	start int
 	end   int
 	line  int

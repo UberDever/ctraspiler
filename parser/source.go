@@ -19,7 +19,7 @@ func (s Source) token(index int) Token {
 	return s.tokens[index]
 }
 
-func (s Source) trace(tag Tag, lexeme string, line int, col int) string {
+func (s Source) trace(tag TokenTag, lexeme string, line int, col int) string {
 	str := fmt.Sprintf("\ttag = %d\n", tag)
 	if lexeme != "" {
 		str += fmt.Sprintf("\tlexeme = %#v\n", lexeme)

@@ -1,13 +1,54 @@
 package parser
 
-type Tag = int
+import "math"
+
+const (
+	precLowest  = iota
+	precHighest = 7
+)
+
+func precedenceTable(lexeme string) (int, NodeTag) {
+	switch lexeme {
+	case "||":
+		return 1, NodeOr
+	case "&&":
+		return 2, NodeAnd
+	case "==":
+		return 3, NodeEquals
+	case "!=":
+		return 3, NodeNotEquals
+	case ">":
+		return 3, NodeGreaterThan
+	case "<":
+		return 3, NodeLessThan
+	case ">=":
+		return 3, NodeGreaterThanEquals
+	case "<=":
+		return 3, NodeLessThanEquals
+	case "+":
+		return 4, NodeBinaryPlus
+	case "-":
+		return 4, NodeBinaryMinus
+	case "*":
+		return 5, NodeMultiply
+	case "/":
+		return 5, NodeDivide
+	}
+	return precLowest, NodeUndefined
+}
+
 type Index = int
+
+const (
+	IndexInvalid   Index = math.MinInt
+	IndexUndefined       = -1
+)
 
 type Parser struct {
 	ast *AST
 	src *Source
 
-	current   int
+	current   Index
 	line, col int
 	scratch   []Index
 }
@@ -27,34 +68,34 @@ func (p *Parser) next() {
 	}
 }
 
-func (p *Parser) addNode(n Node) int {
+func (p *Parser) addNode(n Node) Index {
 	p.ast.nodes = append(p.ast.nodes, n)
 	return len(p.ast.nodes) - 1
 }
 
-func (p *Parser) matchTag(tag Tag) bool {
+func (p *Parser) matchTag(tag TokenTag) bool {
 	c := p.src.token(p.current)
 	return c.tag == tag
 }
 
-func (p *Parser) expectTag(tag Tag) {
+func (p *Parser) expectTag(tag TokenTag) {
 	c := p.src.token(p.current)
 	if !p.matchTag(tag) {
-		panic("\nExpected\n" + p.src.trace(tag, "", -1, -1) +
+		panic("\nExpected\n" + p.src.trace(tag, "", TokenEOF, TokenEOF) +
 			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
 	}
 	p.next()
 }
 
-func (p *Parser) matchToken(tag Tag, lexeme string) bool {
+func (p *Parser) matchToken(tag TokenTag, lexeme string) bool {
 	current := p.src.token(p.current)
 	return current.tag == tag && p.src.lexeme(current) == lexeme
 }
 
-func (p *Parser) expectToken(tag Tag, lexeme string) {
+func (p *Parser) expectToken(tag TokenTag, lexeme string) {
 	c := p.src.token(p.current)
 	if !p.matchToken(tag, lexeme) {
-		panic("\nExpected\n" + p.src.trace(tag, lexeme, -1, -1) +
+		panic("\nExpected\n" + p.src.trace(tag, lexeme, TokenEOF, TokenEOF) +
 			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col))
 	}
 	p.next()
@@ -125,7 +166,7 @@ func (p *Parser) parseSource() {
 	p.ast.nodes[0].lhs, p.ast.nodes[0].rhs = p.addScratchToExtra(scratch_top)
 }
 
-func (p *Parser) parseFunctionDecl() int {
+func (p *Parser) parseFunctionDecl() Index {
 	n := NullNode
 	n.tag = NodeFunctionDecl
 
@@ -134,7 +175,7 @@ func (p *Parser) parseFunctionDecl() int {
 	p.expectTag(TokenIdentifier)
 
 	n.lhs = p.parseSignature()
-	n.rhs = 0
+	n.rhs = IndexUndefined
 	if p.matchToken(TokenPunctuation, "{") {
 		n.rhs = p.parseBlock()
 	}
@@ -143,12 +184,12 @@ func (p *Parser) parseFunctionDecl() int {
 	return p.addNode(n)
 }
 
-func (p *Parser) parseSignature() int {
+func (p *Parser) parseSignature() Index {
 	n := NullNode
 	n.tag, n.tokenIdx = NodeSignature, p.current
-	n.rhs = 0
+	n.lhs = IndexUndefined
+	n.rhs = IndexUndefined
 
-	n.lhs = 0
 	p.expectToken(TokenPunctuation, "(")
 	if p.matchToken(TokenPunctuation, ")") {
 		p.next()
@@ -162,7 +203,7 @@ func (p *Parser) parseSignature() int {
 	return p.addNode(n)
 }
 
-func (p *Parser) parseBlock() int {
+func (p *Parser) parseBlock() Index {
 	n := NullNode
 	n.tag, n.tokenIdx = NodeBlock, p.current
 
@@ -170,26 +211,22 @@ func (p *Parser) parseBlock() int {
 	defer p.restoreScratch(scratch_top)
 
 	p.expectToken(TokenPunctuation, "{")
-	p.scratch = append(p.scratch, p.current)
-	p.parseStatement()
-	p.expectTerminator()
-	// p.expectTag(TokenIdentifier)
-	// for {
-	// 	if p.matchToken(TokenPunctuation, ",") {
-	// 		p.next()
+	if p.matchToken(TokenPunctuation, "}") {
+		n.lhs, n.rhs = IndexUndefined, IndexUndefined
+		return p.addNode(n)
+	}
 
-	// 		p.scratch = append(p.scratch, p.current)
-	// 		p.expectTag(TokenIdentifier)
-	// 	} else {
-	// 		break
-	// 	}
-	// }
+	for !p.matchToken(TokenPunctuation, "}") {
+		p.scratch = append(p.scratch, p.parseStatement())
+		p.expectTerminator()
+	}
+
 	p.expectToken(TokenPunctuation, "}")
 	n.lhs, n.rhs = p.addScratchToExtra(scratch_top)
 	return p.addNode(n)
 }
 
-func (p *Parser) parseStatement() int {
+func (p *Parser) parseStatement() Index {
 	if p.matchToken(TokenKeyword, "const") {
 		return p.parseConstDecl()
 	} else {
@@ -198,7 +235,7 @@ func (p *Parser) parseStatement() int {
 	}
 }
 
-func (p *Parser) parseConstDecl() int {
+func (p *Parser) parseConstDecl() Index {
 	n := NullNode
 	n.tag, n.tokenIdx = NodeConstDecl, p.current
 
@@ -210,7 +247,7 @@ func (p *Parser) parseConstDecl() int {
 	return p.addNode(n)
 }
 
-func (p *Parser) parseExpressionList() int {
+func (p *Parser) parseExpressionList() Index {
 	n := NullNode
 	n.tag, n.tokenIdx = NodeExpressionList, p.current
 
@@ -219,57 +256,9 @@ func (p *Parser) parseExpressionList() int {
 
 	p.scratch = append(p.scratch, p.parseExpression())
 	for {
-		// if p.matchToken(TokenPunctuation, ",") {
-		// 	p.next()
-
-		// 	p.scratch = append(p.scratch, p.current)
-		// 	p.expectTag(TokenIdentifier)
-		// } else {
-		// 	break
-		// }
-	}
-
-	n.lhs, n.rhs = p.addScratchToExtra(scratch_top)
-	return p.addNode(n)
-}
-
-func (p *Parser) parseExpression() int {
-	panic("parseExpression unimplemented")
-	// if p.matchTag(TokenUnaryOp) {
-	// 	return p.parseUnary()
-	// }
-	// if p.matchTag(TokenBinaryOp) {
-	// 	if p.matchToken(TokenBinaryOp, "+") {
-
-	// 	}
-	// 	p.expectTag(TokenBinaryOp)
-	// }
-	// return p.parsePrimary()
-}
-
-// func (p *Parser) parseUnary() int {
-
-// }
-
-// func (p *Parser) parsePrimary() int {
-
-// }
-
-func (p *Parser) parseIdentifierList() int {
-	n := NullNode
-	n.tag, n.tokenIdx = NodeIdentifierList, p.current
-
-	scratch_top := len(p.scratch)
-	defer p.restoreScratch(scratch_top)
-
-	p.scratch = append(p.scratch, p.current)
-	p.expectTag(TokenIdentifier)
-	for {
 		if p.matchToken(TokenPunctuation, ",") {
 			p.next()
-
-			p.scratch = append(p.scratch, p.current)
-			p.expectTag(TokenIdentifier)
+			p.scratch = append(p.scratch, p.parseExpression())
 		} else {
 			break
 		}
@@ -279,10 +268,72 @@ func (p *Parser) parseIdentifierList() int {
 	return p.addNode(n)
 }
 
-func (p *Parser) parseLiteral() int {
+func (p *Parser) parseExpression() Index {
+	return p.parseBinaryExpr(precLowest + 1)
+}
+
+func (p *Parser) parseBinaryExpr(precedence int) Index {
+	n := NullNode
+
+	lhs := p.parseUnaryExpr()
+	for {
+		op := p.src.lexeme(p.src.token(p.current))
+		opPrec, tag := precedenceTable(op)
+		if opPrec < precedence {
+			return lhs
+		}
+		n.tokenIdx = p.current
+		p.next()
+
+		n.tag = tag
+		n.rhs = p.parseBinaryExpr(opPrec + 1)
+		n.lhs = lhs
+		lhs = p.addNode(n)
+	}
+}
+
+func (p *Parser) parseUnaryExpr() Index {
+	return p.parseLiteral()
+
+}
+
+func (p *Parser) parsePrimaryExpr() Index {
+	return IndexInvalid
+}
+
+func (p *Parser) parseIdentifierList() Index {
+	n := NullNode
+	n.tag, n.tokenIdx = NodeIdentifierList, p.current
+
+	scratch_top := len(p.scratch)
+	defer p.restoreScratch(scratch_top)
+
+	p.scratch = append(p.scratch, p.parseIdentifier())
+	for {
+		if p.matchToken(TokenPunctuation, ",") {
+			p.next()
+			p.scratch = append(p.scratch, p.parseIdentifier())
+		} else {
+			break
+		}
+	}
+
+	n.lhs, n.rhs = p.addScratchToExtra(scratch_top)
+	return p.addNode(n)
+}
+
+func (p *Parser) parseIdentifier() Index {
+	n := NullNode
+	n.tag, n.tokenIdx = NodeIdentifier, p.current
+	n.lhs, n.rhs = IndexUndefined, IndexUndefined
+	p.expectTag(TokenIdentifier)
+	return p.addNode(n)
+}
+
+func (p *Parser) parseLiteral() Index {
 	n := NullNode
 	n.tokenIdx = p.current
-	n.lhs, n.rhs = 0, 0
+	n.lhs, n.rhs = IndexUndefined, IndexUndefined
 
 	if p.matchTag(TokenIntLit) {
 		n.tag = NodeIntLiteral
