@@ -136,6 +136,9 @@ func (n ConstDecl) Expressions(ast *AST) []int {
 	return ExpressionList{rhs}.Children(ast)
 }
 
+type Selector struct{ Node }
+type Call struct{ Node }
+
 type IdentifierList struct{ Node }
 
 func (n IdentifierList) Children(ast *AST) []int {
@@ -178,6 +181,38 @@ func (ast *AST) GetNodeString(n Node) string {
 		return "Block"
 	case NodeConstDecl:
 		return "ConstDecl"
+
+	case NodeOr:
+		return "||"
+	case NodeAnd:
+		return "&&"
+	case NodeEquals:
+		return "=="
+	case NodeNotEquals:
+		return "!="
+	case NodeGreaterThan:
+		return ">"
+	case NodeLessThan:
+		return "<"
+	case NodeGreaterThanEquals:
+		return ">="
+	case NodeLessThanEquals:
+		return "<="
+	case NodeBinaryPlus:
+		return "+"
+	case NodeBinaryMinus:
+		return "-"
+	case NodeMultiply:
+		return "*"
+	case NodeDivide:
+		return "/"
+
+	case NodeUnaryPlus:
+		return "+"
+	case NodeUnaryMinus:
+		return "-"
+	case NodeNot:
+		return "Not"
 
 	case NodeIdentifierList:
 		ids := IdentifierList{n}.Children(ast)
@@ -236,17 +271,35 @@ func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i Index) {
 		ast.traverseNode(onEnter, onExit, node.Signature(ast))
 		ast.traverseNode(onEnter, onExit, node.Body(ast))
 	case NodeSignature:
-		node := Signature{n}
-		ast.traverseNode(onEnter, onExit, node.lhs)
+		ast.traverseNode(onEnter, onExit, n.lhs)
 	case NodeBlock:
 		nodes := Block{n}.Children(ast)
 		for _, c := range nodes {
 			ast.traverseNode(onEnter, onExit, c)
 		}
 	case NodeConstDecl:
-		node := ConstDecl{n}
-		ast.traverseNode(onEnter, onExit, node.lhs)
-		ast.traverseNode(onEnter, onExit, node.rhs)
+		ast.traverseNode(onEnter, onExit, n.lhs)
+		ast.traverseNode(onEnter, onExit, n.rhs)
+
+	case NodeOr,
+		NodeAnd,
+		NodeEquals,
+		NodeNotEquals,
+		NodeGreaterThan,
+		NodeLessThan,
+		NodeGreaterThanEquals,
+		NodeLessThanEquals,
+		NodeBinaryPlus,
+		NodeBinaryMinus,
+		NodeMultiply,
+		NodeDivide:
+		ast.traverseNode(onEnter, onExit, n.lhs)
+		ast.traverseNode(onEnter, onExit, n.rhs)
+
+	case NodeUnaryPlus,
+		NodeUnaryMinus,
+		NodeNot:
+		ast.traverseNode(onEnter, onExit, n.lhs)
 
 	case NodeIdentifierList:
 		break // do nothing
