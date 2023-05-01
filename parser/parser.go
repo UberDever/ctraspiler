@@ -207,10 +207,10 @@ func (p *Parser) parseFunctionDecl() NodeIndex {
 	n.tag = NodeFunctionDecl
 
 	p.expectToken(TokenKeyword, "fn")
-	// don't store NodeIndex into TokenIndex to not break type invariants
-	n.tokenIdx = p.current
+
 	// this will store identifier to ast.nodes
 	// we will find that node later by ast.nodes traversal
+	n.tokenIdx = p.current
 	_ = p.parseIdentifier()
 
 	n.lhs = p.parseSignature()

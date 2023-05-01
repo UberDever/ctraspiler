@@ -1,19 +1,39 @@
 package parser
 
 import (
+	"fmt"
 	"testing"
 
 	"golang.org/x/exp/utf8string"
 )
 
-func testAST(lhs string, rhs string) (result string, expected string) {
+func isASTValid(nodes []Node) bool {
+	for _, n := range nodes {
+		if n.tag == NodeInvalid ||
+			n.tokenIdx == TokenIndexInvalid ||
+			n.lhs == NodeIndexInvalid ||
+			n.rhs == NodeIndexInvalid {
+			return false
+		}
+	}
+	return true
+}
+
+func runTest(lhs string, rhs string) error {
 	source := utf8string.NewString(lhs)
-	expected = unformatSExpr(utf8string.NewString(rhs).String())
 	bytes := []byte(source.String())
 	src := tokenize(bytes)
 	ast := Parse(&src)
-	result = ast.dump(false)
-	return
+	expected := unformatSExpr(utf8string.NewString(rhs).String())
+	result := ast.dump(false)
+
+	if result != expected {
+		return fmt.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	}
+	if !isASTValid(ast.nodes) {
+		return fmt.Errorf("AST nodes failed on validity test")
+	}
+	return nil
 }
 
 func TestParseFunctionDecl(t *testing.T) {
@@ -23,15 +43,14 @@ func TestParseFunctionDecl(t *testing.T) {
 	`
 	rhs := `
 		(Source
-			(FunctionDecl main 
+			(FunctionDecl (main)
 				(Signature ()))
-			(FunctionDecl some 
+			(FunctionDecl (some)
 				(Signature (a b)
 				)))
 	`
-	result, expected := testAST(lhs, rhs)
-	if result != expected {
-		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	if e := runTest(lhs, rhs); e != nil {
+		t.Error(e)
 	}
 }
 
@@ -45,7 +64,7 @@ func TestParseConstDecl(t *testing.T) {
 	`
 	rhs := `
 	(Source
-		(FunctionDecl main 
+		(FunctionDecl (main) 
 			(Signature ())
 				(Block 
 					(ConstDecl 
@@ -62,9 +81,8 @@ func TestParseConstDecl(t *testing.T) {
 							("E")
 						))
 	)))`
-	result, expected := testAST(lhs, rhs)
-	if result != expected {
-		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	if e := runTest(lhs, rhs); e != nil {
+		t.Error(e)
 	}
 }
 
@@ -80,21 +98,20 @@ func TestParseSomeExpressions(t *testing.T) {
 	`
 	rhs := `
 	(Source
-		(FunctionDecl main 
+		(FunctionDecl (main)
 			(Signature ())
 				(Block 
 					(ConstDecl (x) (ExpressionList (8)))
 					(+ (* (x) (8)) (3))
 					(+ (x) (/ (3) (4)))
 					(Call (f) 
-						(ExpressionList (x) (Selector (x) (y))))
+						(ExpressionList (x) (Get (x) (y))))
 					(Assign
-						(ExpressionList (x) (Selector (x) (y)))
-						(ExpressionList (Selector (x) (y)) (x)))
+						(ExpressionList (x) (Get (x) (y)))
+						(ExpressionList (Get (x) (y)) (x)))
 	)))`
-	result, expected := testAST(lhs, rhs)
-	if result != expected {
-		t.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+	if e := runTest(lhs, rhs); e != nil {
+		t.Error(e)
 	}
 }
 
