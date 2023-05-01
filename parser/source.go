@@ -16,7 +16,7 @@ func (s Source) lexeme(t Token) string {
 	return s.text.Slice(int(t.start), int(t.end+1))
 }
 
-func (s Source) token(index int) Token {
+func (s Source) token(index TokenIndex) Token {
 	return s.tokens[index]
 }
 
@@ -45,10 +45,11 @@ func max(x, y int) int {
 	return y
 }
 
-func (s Source) near(i Index) string {
+func (s Source) near(i TokenIndex) string {
 	margin := 3
-	start := max(0, i-margin)
-	end := min(len(s.tokens)-1, i+margin)
+	index := int(i)
+	start := max(0, index-margin)
+	end := min(len(s.tokens)-1, index+margin)
 	tokens := s.tokens[start:end]
 	ss := strings.Builder{}
 	for _, t := range tokens {

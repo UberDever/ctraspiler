@@ -19,7 +19,7 @@ func TestTokenizer(t *testing.T) {
 	src := tokenize([]byte(source.String()))
 	tokens := src.tokens
 	expected := [...]struct {
-		int
+		TokenTag
 		string
 	}{
 		{TokenKeyword, "fn"},
@@ -72,8 +72,8 @@ func TestTokenizer(t *testing.T) {
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.tag != rhs.int {
-			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.int)
+		if lhs.tag != rhs.TokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.TokenTag)
 		}
 	}
 }

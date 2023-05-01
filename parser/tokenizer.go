@@ -1,13 +1,19 @@
 package parser
 
 import (
+	"math"
 	antlr_parser "some/antlr"
 
 	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 	"golang.org/x/exp/utf8string"
 )
 
-type TokenTag = int
+type TokenTag int
+type TokenIndex int
+
+const (
+	TokenIndexInvalid = math.MinInt
+)
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution
 // i.e. increase granularity
@@ -57,7 +63,7 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 
 	if len(tokens) > 0 {
 		i := len(tokens) - 1
-		last := src.token(i)
+		last := src.token(TokenIndex(i))
 
 		switch last.tag {
 		case TokenIdentifier:
@@ -74,7 +80,7 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 			tokens = append(tokens, semicolon)
 
 		case TokenKeyword:
-			lexeme := src.lexeme(src.token(i))
+			lexeme := src.lexeme(src.token(TokenIndex(i)))
 			if lexeme == "break" ||
 				lexeme == "continue" ||
 				lexeme == "fallthrough" ||
@@ -83,7 +89,7 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 
 			}
 		case TokenPunctuation:
-			lexeme := src.lexeme(src.token(i))
+			lexeme := src.lexeme(src.token(TokenIndex(i)))
 			if lexeme == "++" ||
 				lexeme == "--" ||
 				lexeme == ")" ||
@@ -116,7 +122,7 @@ func tokenize(source []byte) Source {
 			continue
 		}
 		src.tokens = append(src.tokens, Token{
-			tag:   t.GetTokenType(),
+			tag:   TokenTag(t.GetTokenType()),
 			start: t.GetStart(),
 			end:   t.GetStop(),
 			line:  t.GetLine(),
