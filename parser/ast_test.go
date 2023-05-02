@@ -7,16 +7,15 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-func isASTValid(nodes []Node) bool {
-	for _, n := range nodes {
-		if n.tag == NodeInvalid ||
-			n.tokenIdx == TokenIndexInvalid ||
+func isASTValid(nodes []Node) (Node, int, bool) {
+	for i, n := range nodes {
+		if n.tokenIdx == TokenIndexInvalid ||
 			n.lhs == NodeIndexInvalid ||
 			n.rhs == NodeIndexInvalid {
-			return false
+			return n, i, false
 		}
 	}
-	return true
+	return Node{}, -1, true
 }
 
 func runTest(lhs string, rhs string) error {
@@ -27,11 +26,11 @@ func runTest(lhs string, rhs string) error {
 	expected := unformatSExpr(utf8string.NewString(rhs).String())
 	result := ast.dump(false)
 
+	if node, index, ok := isASTValid(ast.nodes); !ok {
+		return fmt.Errorf("AST nodes failed on validity test at %d => %v", index, node)
+	}
 	if result != expected {
 		return fmt.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
-	}
-	if !isASTValid(ast.nodes) {
-		return fmt.Errorf("AST nodes failed on validity test")
 	}
 	return nil
 }

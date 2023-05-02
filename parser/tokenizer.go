@@ -12,7 +12,7 @@ type TokenTag int
 type TokenIndex int
 
 const (
-	TokenIndexInvalid = math.MinInt
+	TokenIndexInvalid TokenIndex = math.MinInt
 )
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution

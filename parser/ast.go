@@ -15,8 +15,7 @@ const (
 )
 
 const (
-	NodeInvalid   NodeTag = math.MinInt
-	NodeUndefined         = -1
+	NodeUndefined = -1
 )
 
 const (
@@ -55,9 +54,53 @@ const (
 
 	NodeIdentifierList
 	NodeExpressionList
+	NodeMax
 )
 
-var nodeIndexToString = [...]func(AST, NodeIndex) string{
+// Note: These three tables (constructor, string and children) handlers
+// can be very convenient and robust at compile time if language has compile
+// time introspection / macro system. But the latter assumes AST transformation,
+// what is not the point here - we just want to fill the maps with handlers, that
+// named specifically, that's all
+var NodeConstructor = [...]func(TokenIndex, NodeIndex, NodeIndex) Node{
+	NodeSource: NewSourceRoot,
+	NodeBlock:  NewBlock,
+
+	NodeFunctionDecl: NewFunctionDecl,
+	NodeSignature:    NewSignature,
+	NodeConstDecl:    NewConstDecl,
+	NodeAssignment:   NewAssignment,
+
+	NodeSelector: NewSelector,
+	NodeCall:     NewCall,
+
+	NodeOr:                NewOr,
+	NodeAnd:               NewAnd,
+	NodeEquals:            NewEquals,
+	NodeNotEquals:         NewNotEquals,
+	NodeGreaterThan:       NewGreaterThan,
+	NodeLessThan:          NewLessThan,
+	NodeGreaterThanEquals: NewGreaterThanEquals,
+	NodeLessThanEquals:    NewLessThanEquals,
+	NodeBinaryPlus:        NewBinaryPlus,
+	NodeBinaryMinus:       NewBinaryMinus,
+	NodeMultiply:          NewMultiply,
+	NodeDivide:            NewDivide,
+
+	NodeUnaryPlus:  NewUnaryPlus,
+	NodeUnaryMinus: NewUnaryMinus,
+	NodeNot:        NewNot,
+
+	NodeIntLiteral:    NewIntLiteral,
+	NodeFloatLiteral:  NewFloatLiteral,
+	NodeStringLiteral: NewStringLiteral,
+	NodeIdentifier:    NewIdentifier,
+
+	NodeIdentifierList: NewIdentifierList,
+	NodeExpressionList: NewExpressionList,
+}
+
+var NodeString = [...]func(AST, NodeIndex) string{
 	NodeSource: SourceRoot_String,
 	NodeBlock:  Block_String,
 
@@ -95,7 +138,7 @@ var nodeIndexToString = [...]func(AST, NodeIndex) string{
 	NodeExpressionList: ExpressionList_String,
 }
 
-var nodeIndexToChildren = [...]func(AST, NodeIndex) []NodeIndex{
+var NodeChildren = [...]func(AST, NodeIndex) []NodeIndex{
 	NodeSource: SourceRoot_Children,
 	NodeBlock:  Block_Children,
 
@@ -133,21 +176,38 @@ var nodeIndexToChildren = [...]func(AST, NodeIndex) []NodeIndex{
 	NodeExpressionList: ExpressionList_Children,
 }
 
+func init() {
+	for i := 0; i < NodeMax; i++ {
+		{
+			h := NodeConstructor[i]
+			if h == nil {
+				panic(fmt.Sprintf("Node tag to constructor table is not full, failed at %d", i))
+			}
+		}
+		{
+			h := NodeChildren[i]
+			if h == nil {
+				panic(fmt.Sprintf("Node tag to children table is not full, failed at %d", i))
+			}
+		}
+		{
+			h := NodeString[i]
+			if h == nil {
+				panic(fmt.Sprintf("Node tag to string table is not full, failed at %d", i))
+			}
+		}
+	}
+}
+
 type Node struct {
 	tag      NodeTag
 	tokenIdx TokenIndex
 	lhs, rhs NodeIndex
 }
 
-var InvalidNode = Node{
-	tag:      NodeInvalid,
-	tokenIdx: TokenIndexInvalid,
-	lhs:      NodeIndexInvalid,
-	rhs:      NodeIndexInvalid,
-}
-
 // General pattern of typed nodes:
-// Struct with indexes and booleans
+// Full and interpreted struct data (typed node)
+// Untyped node constructor
 // Function to convert from node to typed node
 // Function to convert node to string
 // Function to get node children
@@ -164,6 +224,15 @@ func (ast AST) SourceRoot(n Node) SourceRoot {
 	}
 	return SourceRoot{
 		declarations: decls,
+	}
+}
+
+func NewSourceRoot(rootToken TokenIndex, start NodeIndex, end NodeIndex) Node {
+	return Node{
+		tag:      NodeSource,
+		tokenIdx: rootToken,
+		lhs:      start,
+		rhs:      end,
 	}
 }
 
@@ -201,6 +270,15 @@ func (ast AST) FunctionDecl(n Node) FunctionDecl {
 	return node
 }
 
+func NewFunctionDecl(tokenIdx TokenIndex, signature NodeIndex, body NodeIndex) Node {
+	return Node{
+		tag:      NodeFunctionDecl,
+		tokenIdx: tokenIdx,
+		lhs:      signature,
+		rhs:      body,
+	}
+}
+
 func FunctionDecl_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.FunctionDecl(ast.nodes[i])
 	return []NodeIndex{n.name, n.signature, n.body}
@@ -217,6 +295,15 @@ type Signature struct {
 func (ast AST) Signature(n Node) Signature {
 	return Signature{
 		parameters: n.lhs,
+	}
+}
+
+func NewSignature(tokenIdx TokenIndex, parameters NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeSignature,
+		tokenIdx: tokenIdx,
+		lhs:      parameters,
+		rhs:      rhs,
 	}
 }
 
@@ -244,6 +331,15 @@ func (ast AST) Block(n Node) Block {
 	}
 }
 
+func NewBlock(tokenIdx TokenIndex, start NodeIndex, end NodeIndex) Node {
+	return Node{
+		tag:      NodeBlock,
+		tokenIdx: tokenIdx,
+		lhs:      start,
+		rhs:      end,
+	}
+}
+
 func Block_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.Block(ast.nodes[i])
 	return n.statements
@@ -262,6 +358,15 @@ func (ast AST) ConstDecl(n Node) ConstDecl {
 	return ConstDecl{
 		identifierList: n.lhs,
 		expressionList: n.rhs,
+	}
+}
+
+func NewConstDecl(tokenIdx TokenIndex, identifierList NodeIndex, expressionList NodeIndex) Node {
+	return Node{
+		tag:      NodeConstDecl,
+		tokenIdx: tokenIdx,
+		lhs:      identifierList,
+		rhs:      expressionList,
 	}
 }
 
@@ -286,6 +391,15 @@ func (ast AST) Assignment(n Node) Assignment {
 	}
 }
 
+func NewAssignment(tokenIdx TokenIndex, exprList1 NodeIndex, exprList2 NodeIndex) Node {
+	return Node{
+		tag:      NodeAssignment,
+		tokenIdx: tokenIdx,
+		lhs:      exprList1,
+		rhs:      exprList2,
+	}
+}
+
 func Assignment_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.Assignment(ast.nodes[i])
 	return []NodeIndex{n.lhsList, n.rhsList}
@@ -304,6 +418,15 @@ func (ast AST) Selector(n Node) Selector {
 	return Selector{
 		lhsExpr:    n.lhs,
 		identifier: n.rhs,
+	}
+}
+
+func NewSelector(tokenIdx TokenIndex, expr NodeIndex, identifier NodeIndex) Node {
+	return Node{
+		tag:      NodeSelector,
+		tokenIdx: tokenIdx,
+		lhs:      expr,
+		rhs:      identifier,
 	}
 }
 
@@ -328,6 +451,16 @@ func (ast AST) Call(n Node) Call {
 	}
 }
 
+func NewCall(tokenIdx TokenIndex, expr NodeIndex, args NodeIndex) Node {
+	return Node{
+		tag:      NodeCall,
+		tokenIdx: tokenIdx,
+		lhs:      expr,
+		rhs:      args,
+	}
+
+}
+
 func Call_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.Call(ast.nodes[i])
 	return []NodeIndex{n.lhsExpr, n.arguments}
@@ -347,6 +480,16 @@ func (ast AST) Or(n Node) Or {
 		lhs: n.lhs,
 		rhs: n.rhs,
 	}
+}
+
+func NewOr(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeOr,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func Or_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -370,6 +513,16 @@ func (ast AST) And(n Node) And {
 	}
 }
 
+func NewAnd(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeAnd,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func And_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.And(ast.nodes[i])
 	return []NodeIndex{n.lhs, n.rhs}
@@ -389,6 +542,16 @@ func (ast AST) Equals(n Node) Equals {
 		lhs: n.lhs,
 		rhs: n.rhs,
 	}
+}
+
+func NewEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeEquals,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func Equals_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -412,6 +575,16 @@ func (ast AST) NotEquals(n Node) NotEquals {
 	}
 }
 
+func NewNotEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeNotEquals,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func NotEquals_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.NotEquals(ast.nodes[i])
 	return []NodeIndex{n.lhs, n.rhs}
@@ -431,6 +604,16 @@ func (ast AST) GreaterThan(n Node) GreaterThan {
 		lhs: n.lhs,
 		rhs: n.rhs,
 	}
+}
+
+func NewGreaterThan(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeGreaterThan,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func GreaterThan_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -454,6 +637,16 @@ func (ast AST) LessThan(n Node) LessThan {
 	}
 }
 
+func NewLessThan(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeLessThan,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func LessThan_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.LessThan(ast.nodes[i])
 	return []NodeIndex{n.lhs, n.rhs}
@@ -473,6 +666,16 @@ func (ast AST) GreaterThanEquals(n Node) GreaterThanEquals {
 		lhs: n.lhs,
 		rhs: n.rhs,
 	}
+}
+
+func NewGreaterThanEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeGreaterThanEquals,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func GreaterThanEquals_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -496,6 +699,16 @@ func (ast AST) LessThanEquals(n Node) LessThanEquals {
 	}
 }
 
+func NewLessThanEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeLessThanEquals,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func LessThanEquals_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.LessThanEquals(ast.nodes[i])
 	return []NodeIndex{n.lhs, n.rhs}
@@ -515,6 +728,16 @@ func (ast AST) BinaryPlus(n Node) BinaryPlus {
 		lhs: n.lhs,
 		rhs: n.rhs,
 	}
+}
+
+func NewBinaryPlus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeBinaryPlus,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func BinaryPlus_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -538,6 +761,16 @@ func (ast AST) BinaryMinus(n Node) BinaryMinus {
 	}
 }
 
+func NewBinaryMinus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeBinaryMinus,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func BinaryMinus_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.BinaryMinus(ast.nodes[i])
 	return []NodeIndex{n.lhs, n.rhs}
@@ -557,6 +790,16 @@ func (ast AST) Multiply(n Node) Multiply {
 		lhs: n.lhs,
 		rhs: n.rhs,
 	}
+}
+
+func NewMultiply(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeMultiply,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func Multiply_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -580,6 +823,16 @@ func (ast AST) Divide(n Node) Divide {
 	}
 }
 
+func NewDivide(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeDivide,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func Divide_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.Divide(ast.nodes[i])
 	return []NodeIndex{n.lhs, n.rhs}
@@ -597,6 +850,16 @@ func (ast AST) UnaryPlus(n Node) UnaryPlus {
 	return UnaryPlus{
 		unary: n.lhs,
 	}
+}
+
+func NewUnaryPlus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeUnaryPlus,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func UnaryPlus_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -618,6 +881,16 @@ func (ast AST) UnaryMinus(n Node) UnaryMinus {
 	}
 }
 
+func NewUnaryMinus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeUnaryMinus,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
 func UnaryMinus_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.UnaryMinus(ast.nodes[i])
 	return []NodeIndex{n.unary}
@@ -635,6 +908,15 @@ func (ast AST) Not(n Node) Not {
 	return Not{
 		unary: n.lhs,
 	}
+}
+func NewNot(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeNot,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func Not_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -659,6 +941,15 @@ func (ast AST) IdentifierList(n Node) IdentifierList {
 	return IdentifierList{
 		identifiers: ids,
 	}
+}
+func NewIdentifierList(tokenIdx TokenIndex, start NodeIndex, end NodeIndex) Node {
+	return Node{
+		tag:      NodeIdentifierList,
+		tokenIdx: tokenIdx,
+		lhs:      start,
+		rhs:      end,
+	}
+
 }
 
 func IdentifierList_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -689,6 +980,15 @@ func (ast AST) ExpressionList(n Node) ExpressionList {
 		expressions: exprs,
 	}
 }
+func NewExpressionList(tokenIdx TokenIndex, start NodeIndex, end NodeIndex) Node {
+	return Node{
+		tag:      NodeExpressionList,
+		tokenIdx: tokenIdx,
+		lhs:      start,
+		rhs:      end,
+	}
+
+}
 
 func ExpressionList_Children(ast AST, i NodeIndex) []NodeIndex {
 	n := ast.IdentifierList(ast.nodes[i])
@@ -707,6 +1007,15 @@ func (ast AST) IntLiteral(n Node) IntLiteral {
 	return IntLiteral{
 		token: n.tokenIdx,
 	}
+}
+func NewIntLiteral(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeIntLiteral,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func IntLiteral_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -727,6 +1036,15 @@ func (ast AST) FloatLiteral(n Node) FloatLiteral {
 		token: n.tokenIdx,
 	}
 }
+func NewFloatLiteral(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeFloatLiteral,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
 
 func FloatLiteral_Children(ast AST, i NodeIndex) []NodeIndex {
 	return []NodeIndex{}
@@ -745,6 +1063,15 @@ func (ast AST) StringLiteral(n Node) StringLiteral {
 	return StringLiteral{
 		token: n.tokenIdx,
 	}
+}
+func NewStringLiteral(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeStringLiteral,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
 }
 
 func StringLiteral_Children(ast AST, i NodeIndex) []NodeIndex {
@@ -765,6 +1092,15 @@ func (ast AST) Identifier(n Node) Identifier {
 		token: n.tokenIdx,
 	}
 }
+func NewIdentifier(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeIdentifier,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
 
 func Identifier_Children(ast AST, i NodeIndex) []NodeIndex {
 	return []NodeIndex{}
@@ -781,12 +1117,9 @@ type AST struct {
 	extra []AnyIndex
 }
 
-func (ast AST) NodeString(i NodeIndex) string {
+func (ast AST) GetNodeString(i NodeIndex) string {
 	n := ast.nodes[i]
-	getString := nodeIndexToString[n.tag]
-	if getString == nil {
-		panic(fmt.Sprintf("Handler for %d is not set", n.tag))
-	}
+	getString := NodeString[n.tag]
 	return getString(ast, i)
 }
 
@@ -807,10 +1140,7 @@ func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i NodeIndex)
 		return
 	}
 
-	getChildren := nodeIndexToChildren[n.tag]
-	if getChildren == nil {
-		panic(fmt.Sprintf("Handler for %d is not set", n.tag))
-	}
+	getChildren := NodeChildren[n.tag]
 	children := getChildren(*ast, i)
 	for _, c := range children {
 		ast.traverseNode(onEnter, onExit, c)
@@ -872,7 +1202,7 @@ func (ast *AST) dump(doFormat bool) string {
 	str := strings.Builder{}
 	onEnter := func(ast *AST, i NodeIndex) (stopTraversal bool) {
 		str.WriteByte('(')
-		str.WriteString(ast.NodeString(i))
+		str.WriteString(ast.GetNodeString(i))
 
 		// filter nodes that are composite by themselves
 		n := ast.nodes[i]
