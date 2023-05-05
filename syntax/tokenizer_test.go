@@ -1,4 +1,4 @@
-package parser
+package syntax
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ func TestTokenizer(t *testing.T) {
 	"some string"
 	Идентификатор
 	`)
-	src := tokenize([]byte(source.String()))
+	src := tokenize("tokenizer_test", []byte(source.String()))
 	tokens := src.tokens
 	expected := [...]struct {
 		TokenTag

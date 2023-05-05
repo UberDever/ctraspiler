@@ -1,4 +1,4 @@
-package parser
+package syntax
 
 import (
 	"math"
@@ -103,8 +103,8 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 	return tokens
 }
 
-func tokenize(source []byte) Source {
-	src := Source{text: *utf8string.NewString(string(source))}
+func tokenize(filename string, source []byte) Source {
+	src := NewSource(filename, *utf8string.NewString(string(source)))
 
 	is := antlr.NewInputStream(string(source))
 	lexer := antlr_parser.NewSome(is)

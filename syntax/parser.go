@@ -1,7 +1,8 @@
-package parser
+package syntax
 
 import (
 	"fmt"
+	"some/util"
 )
 
 const (
@@ -107,9 +108,11 @@ func (p *Parser) matchTag(tag TokenTag) bool {
 func (p *Parser) expectTag(tag TokenTag) {
 	c := p.src.token(p.current)
 	if !p.matchTag(tag) {
-		panic("\nExpected\n" + p.src.trace(tag, "", int(TokenEOF), int(TokenEOF)) +
-			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col) +
-			fmt.Sprintf("Near\n%#v", p.src.near(p.current)))
+		expected := p.src.trace(tag, "", int(TokenEOF), int(TokenEOF))
+		got := p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col)
+		util.ErrorHandler.Add(util.NewError(
+			util.Parser, util.EP_ExpectedTag, c.line, c.col, p.src.file, expected, got,
+		))
 	}
 	p.next()
 }
@@ -122,9 +125,11 @@ func (p *Parser) matchToken(tag TokenTag, lexeme string) bool {
 func (p *Parser) expectToken(tag TokenTag, lexeme string) {
 	c := p.src.token(p.current)
 	if !p.matchToken(tag, lexeme) {
-		panic("\nExpected\n" + p.src.trace(tag, lexeme, int(TokenEOF), int(TokenEOF)) +
-			"Got\n" + p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col) +
-			fmt.Sprintf("Line: %#v", p.src.near(p.current)))
+		expected := p.src.trace(tag, lexeme, int(TokenEOF), int(TokenEOF))
+		got := p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col)
+		util.ErrorHandler.Add(util.NewError(
+			util.Parser, util.EP_ExpectedToken, c.line, c.col, p.src.file, expected, got,
+		))
 	}
 	p.next()
 }
@@ -161,6 +166,7 @@ func Parse(src *Source) AST {
 	ast := AST{
 		src: src,
 	}
+
 	p := Parser{
 		ast:     &ast,
 		src:     src,
@@ -196,7 +202,11 @@ func (p *Parser) parseSource() {
 		if !p.matchToken(TokenKeyword, "fn") {
 			c := p.src.token(p.current)
 			tokenTrace := p.src.trace(c.tag, p.src.lexeme(c), c.line, c.col)
-			panic("At\n" + tokenTrace + "expected function declaration")
+			e := util.NewError(util.Parser, 0, c.line, c.col, p.src.file, tokenTrace)
+			util.ErrorHandler.Add(e)
+			// TODO: Add error handling after this on the call of Parse
+			// also, do we need restore here?
+			return
 		}
 
 		index := p.parseFunctionDecl()

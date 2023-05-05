@@ -1,4 +1,4 @@
-package parser
+package syntax
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func isASTValid(nodes []Node) (Node, int, bool) {
 func runTest(lhs string, rhs string) error {
 	source := utf8string.NewString(lhs)
 	bytes := []byte(source.String())
-	src := tokenize(bytes)
+	src := tokenize("ast_test", bytes)
 	ast := Parse(&src)
 	expected := unformatSExpr(utf8string.NewString(rhs).String())
 	result := ast.dump(false)
@@ -39,6 +39,7 @@ func TestParseFunctionDecl(t *testing.T) {
 	lhs := `
 		fn main()
 		fn some(a, b) // some function
+		garbage
 	`
 	rhs := `
 		(Source
@@ -108,6 +109,7 @@ func TestParseSomeExpressions(t *testing.T) {
 					(Assign
 						(ExpressionList (x) (Get (x) (y)))
 						(ExpressionList (Get (x) (y)) (x)))
+				
 	)))`
 	if e := runTest(lhs, rhs); e != nil {
 		t.Error(e)
@@ -120,7 +122,7 @@ func TestSExprFormatting(t *testing.T) {
 		fn some(a, b) // some function
 	`)
 	bytes := []byte(source.String())
-	src := tokenize(bytes)
+	src := tokenize("sexpr_test", bytes)
 	ast := Parse(&src)
 	dump := ast.dump(false)
 	formatted := formatSExpr(dump)

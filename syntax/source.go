@@ -1,15 +1,21 @@
-package parser
+package syntax
 
 import (
 	"fmt"
+	"some/util"
 	"strings"
 
 	"golang.org/x/exp/utf8string"
 )
 
 type Source struct {
+	file   string
 	text   utf8string.String
 	tokens []Token
+}
+
+func NewSource(filename string, text utf8string.String) Source {
+	return Source{file: filename, text: text}
 }
 
 func (s Source) lexeme(t Token) string {
@@ -31,25 +37,11 @@ func (s Source) trace(tag TokenTag, lexeme string, line int, col int) string {
 	return str
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func max(x, y int) int {
-	if x > y {
-		return x
-	}
-	return y
-}
-
 func (s Source) near(i TokenIndex) string {
 	margin := 3
 	index := int(i)
-	start := max(0, index-margin)
-	end := min(len(s.tokens)-1, index+margin)
+	start := util.Max(0, index-margin)
+	end := util.Min(len(s.tokens)-1, index+margin)
 	tokens := s.tokens[start:end]
 	ss := strings.Builder{}
 	for _, t := range tokens {
