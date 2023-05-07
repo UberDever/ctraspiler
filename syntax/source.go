@@ -6,26 +6,37 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-type source struct {
-	file   string
-	text   utf8string.String
-	tokens []token
+type Source struct {
+	filename string
+	text     utf8string.String
+	tokens   []token
 }
 
-func NewSource(filename string, text utf8string.String) source {
-	return source{file: filename, text: text}
+func NewSource(filename string, text utf8string.String) Source {
+	return Source{filename: filename, text: text}
 }
 
-func (s source) Lexeme(index tokenIndex) string {
+func (s Source) Location(index tokenIndex) (line, col int) {
+	t := s.token(index)
+	line = t.line
+	col = t.col
+	return
+}
+
+func (s Source) Lexeme(index tokenIndex) string {
 	t := s.token(index)
 	return s.text.Slice(int(t.start), int(t.end+1))
 }
 
-func (s source) token(index tokenIndex) token {
+func (s Source) Filename() string {
+	return s.filename
+}
+
+func (s Source) token(index tokenIndex) token {
 	return s.tokens[index]
 }
 
-func (s source) traceToken(tag tokenTag, lexeme string, line int, col int) string {
+func (s Source) traceToken(tag tokenTag, lexeme string, line int, col int) string {
 	str := fmt.Sprintf("\ttag = %d\n", tag)
 	if lexeme != "" {
 		str += fmt.Sprintf("\tlexeme = %#v\n", lexeme)

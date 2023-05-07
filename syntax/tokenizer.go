@@ -52,7 +52,7 @@ func NewTokenizer(handler *util.ErrorHandler) tokenizer {
 	return tokenizer{handler}
 }
 
-func (tok *tokenizer) Tokenize(src *source) {
+func (tok *tokenizer) Tokenize(src *Source) {
 	is := antlr.NewInputStream(src.text.String())
 	lexer := antlr_parser.NewSome(is)
 
@@ -79,7 +79,7 @@ func (tok *tokenizer) Tokenize(src *source) {
 	src.tokens = append(src.tokens, token{TokenEOF, -1, -1, -1, -1})
 }
 
-func (tok *tokenizer) tryInsertSemicolon(s *source, terminator antlr.Token) []token {
+func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []token {
 	semicolon := token{
 		tag:   TokenTerminator,
 		start: terminator.GetStart(),

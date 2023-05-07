@@ -22,6 +22,7 @@ var sources = [...]string{
 const (
 	EP_ExpectedToken errorCode = iota
 	EP_ExpectedSemicolon
+	ES_LookupFailed
 )
 
 var templates = [...][]string{
@@ -32,8 +33,10 @@ var templates = [...][]string{
 		EP_ExpectedToken:     "\nExpected \n%s\nbut got \n%s\n",
 		EP_ExpectedSemicolon: "\nExpected \nsemicolon\nbut got \n%s\n",
 	},
-	Ast:      {},
-	Semantic: {},
+	Ast: {},
+	Semantic: {
+		ES_LookupFailed: "\nLookup for identifier %s failed",
+	},
 }
 
 type Error struct {

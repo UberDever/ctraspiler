@@ -29,7 +29,7 @@ func runTest(code string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	LookupPass(&ast, &handler)
+	LookupPass(src, ast, &handler)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
@@ -43,9 +43,38 @@ func TestLookupDeclarations(t *testing.T) {
 		fn some(a, b) { }
 		fn complex(a, b, d) {
 			const v1, v2 = 3, 4
+			const v3 = v2
+			some(a, v3)
 		}
 	`
 	if e := runTest(code); e != nil {
 		t.Error(e)
+	}
+}
+
+func TestLookupFailed(t *testing.T) {
+	code := `
+		fn main() {
+			some(2, 3)
+		}
+
+		fn some(a, b) { }
+
+		fn complex(a, b, d) {
+			const a = c + d
+		}
+	`
+	e := runTest(code)
+	if e == nil {
+		t.Error("Exprected failed lookup")
+	}
+	failed := []string{
+		"identifier some failed",
+		"identifier c failed",
+	}
+	for _, fail := range failed {
+		if !strings.Contains(e.Error(), fail) {
+			t.Error("Lookup fail error message malformed")
+		}
 	}
 }

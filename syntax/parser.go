@@ -56,7 +56,7 @@ type anyIndex int
 
 type parser struct {
 	ast     *AST
-	src     *source
+	src     *Source
 	handler *util.ErrorHandler
 
 	current   tokenIndex
@@ -80,7 +80,7 @@ func NewParser(handler *util.ErrorHandler) parser {
 
 }
 
-func (p *parser) Parse(src *source) AST {
+func (p *parser) Parse(src *Source) AST {
 	ast := NewAST(src)
 	p.ast = &ast
 	p.src = src
@@ -158,7 +158,7 @@ func (p *parser) expect(tag tokenTag, lexeme string) {
 		expected := p.src.traceToken(tag, lexeme, int(TokenEOF), int(TokenEOF))
 		got := p.src.traceToken(c.tag, p.src.Lexeme(p.current), c.line, c.col)
 		p.handler.Add(util.NewError(
-			util.Parser, util.EP_ExpectedToken, c.line, c.col, p.src.file, expected, got,
+			util.Parser, util.EP_ExpectedToken, c.line, c.col, p.src.filename, expected, got,
 		))
 
 		// discard tokens

@@ -1107,7 +1107,7 @@ func Identifier_String(ast AST, i NodeIndex) string {
 }
 
 type AST struct {
-	src   *source
+	src   *Source
 	nodes []Node
 
 	// NOTE: That whole thing about "extra" like in zig compiler
@@ -1119,7 +1119,7 @@ type AST struct {
 	extra []anyIndex
 }
 
-func NewAST(src *source) AST {
+func NewAST(src *Source) AST {
 	return AST{src: src}
 }
 
