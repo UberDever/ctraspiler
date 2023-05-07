@@ -8,25 +8,26 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-type Source struct {
+type source struct {
 	file   string
 	text   utf8string.String
-	tokens []Token
+	tokens []token
 }
 
-func NewSource(filename string, text utf8string.String) Source {
-	return Source{file: filename, text: text}
+func NewSource(filename string, text utf8string.String) source {
+	return source{file: filename, text: text}
 }
 
-func (s Source) lexeme(t Token) string {
+func (s source) Lexeme(index tokenIndex) string {
+	t := s.token(index)
 	return s.text.Slice(int(t.start), int(t.end+1))
 }
 
-func (s Source) token(index TokenIndex) Token {
+func (s source) token(index tokenIndex) token {
 	return s.tokens[index]
 }
 
-func (s Source) trace(tag TokenTag, lexeme string, line int, col int) string {
+func (s source) traceToken(tag tokenTag, lexeme string, line int, col int) string {
 	str := fmt.Sprintf("\ttag = %d\n", tag)
 	if lexeme != "" {
 		str += fmt.Sprintf("\tlexeme = %#v\n", lexeme)
@@ -37,7 +38,7 @@ func (s Source) trace(tag TokenTag, lexeme string, line int, col int) string {
 	return str
 }
 
-func (s Source) near(i TokenIndex) string {
+func (s source) nearToken(i tokenIndex) string {
 	margin := 3
 	index := int(i)
 	start := util.Max(0, index-margin)
@@ -49,7 +50,7 @@ func (s Source) near(i TokenIndex) string {
 			ss.WriteByte(';')
 			continue
 		}
-		ss.WriteString(s.lexeme(t) + " ")
+		ss.WriteString(s.Lexeme(i) + " ")
 	}
 	return ss.String()
 }

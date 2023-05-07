@@ -20,9 +20,8 @@ var sources = [...]string{
 }
 
 const (
-	EP_ExpectedTag errorCode = iota
-	EP_ExpectedToken
-	EP_ExpectedFunctionDecl
+	EP_ExpectedToken errorCode = iota
+	EP_ExpectedSemicolon
 )
 
 var templates = [...][]string{
@@ -30,8 +29,8 @@ var templates = [...][]string{
 		"No errors here",
 	},
 	Parser: {
-		EP_ExpectedTag:          "Expected tag\n%s\n but got\n%s\n",
-		EP_ExpectedFunctionDecl: "At %s expected function declaration",
+		EP_ExpectedToken:     "\nExpected \n%s\nbut got \n%s\n",
+		EP_ExpectedSemicolon: "\nExpected \nsemicolon\nbut got \n%s\n",
 	},
 	Ast:      {},
 	Semantic: {},
@@ -75,37 +74,33 @@ func (e Error) Position() (line int, col int, filename string) {
 	return
 }
 
-type Handler struct {
+type ErrorHandler struct {
 	errors []Error
 }
 
-func NewHandler() Handler {
-	return Handler{errors: make([]Error, 0)}
+func NewHandler() ErrorHandler {
+	return ErrorHandler{errors: make([]Error, 0)}
 }
 
-func (h Handler) Empty() bool {
+func (h ErrorHandler) Empty() bool {
 	return len(h.errors) == 0
 }
 
-func (h *Handler) Clear() {
+func (h *ErrorHandler) Clear() {
 	h.errors = make([]Error, 0)
 }
 
-func (h *Handler) Add(e Error) {
+func (h *ErrorHandler) Add(e Error) {
 	h.errors = append(h.errors, e)
 }
 
 const Threshold = 10
 
-func (h Handler) AllErrors() []string {
+func (h ErrorHandler) AllErrors() []string {
 	s := make([]string, 0, len(h.errors))
-	n := Max(len(h.errors), Threshold)
+	n := Min(len(h.errors), Threshold)
 	for i := 0; i < n; i++ {
 		s = append(s, h.errors[i].message)
 	}
 	return s
 }
-
-var ErrorHandler Handler
-
-func init() { ErrorHandler = NewHandler() }

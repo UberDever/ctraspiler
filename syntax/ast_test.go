@@ -1,7 +1,10 @@
 package syntax
 
 import (
+	"errors"
 	"fmt"
+	"some/util"
+	"strings"
 	"testing"
 
 	"golang.org/x/exp/utf8string"
@@ -9,9 +12,9 @@ import (
 
 func isASTValid(nodes []Node) (Node, int, bool) {
 	for i, n := range nodes {
-		if n.tokenIdx == TokenIndexInvalid ||
-			n.lhs == NodeIndexInvalid ||
-			n.rhs == NodeIndexInvalid {
+		if n.tokenIdx == tokenIndexInvalid ||
+			n.lhs == nodeIndexInvalid ||
+			n.rhs == nodeIndexInvalid {
 			return n, i, false
 		}
 	}
@@ -19,12 +22,26 @@ func isASTValid(nodes []Node) (Node, int, bool) {
 }
 
 func runTest(lhs string, rhs string) error {
-	source := utf8string.NewString(lhs)
-	bytes := []byte(source.String())
-	src := tokenize("ast_test", bytes)
-	ast := Parse(&src)
+	text := utf8string.NewString(lhs)
+	src := NewSource("ast_test", *text)
+
+	handler := util.NewHandler()
+	tokenizer := NewTokenizer(&handler)
+	tokenizer.Tokenize(&src)
+	if !handler.Empty() {
+		errs := handler.AllErrors()
+		return errors.New(strings.Join(errs, ""))
+	}
+
+	parser := NewParser(&handler)
+	ast := parser.Parse(&src)
+	if !handler.Empty() {
+		errs := handler.AllErrors()
+		return errors.New(strings.Join(errs, ""))
+	}
+
 	expected := unformatSExpr(utf8string.NewString(rhs).String())
-	result := ast.dump(false)
+	result := ast.Dump(false)
 
 	if node, index, ok := isASTValid(ast.nodes); !ok {
 		return fmt.Errorf("AST nodes failed on validity test at %d => %v", index, node)
@@ -35,11 +52,22 @@ func runTest(lhs string, rhs string) error {
 	return nil
 }
 
+func TestErrorHandling(t *testing.T) {
+	lhs := `
+		fn main()
+		some(a, b) // some function
+	`
+	rhs := ``
+	e := runTest(lhs, rhs)
+	if e == nil {
+		t.Error("Expected error")
+	}
+}
+
 func TestParseFunctionDecl(t *testing.T) {
 	lhs := `
 		fn main()
 		fn some(a, b) // some function
-		garbage
 	`
 	rhs := `
 		(Source
@@ -117,14 +145,27 @@ func TestParseSomeExpressions(t *testing.T) {
 }
 
 func TestSExprFormatting(t *testing.T) {
-	source := utf8string.NewString(`
+	text := utf8string.NewString(`
 		fn main()
 		fn some(a, b) // some function
 	`)
-	bytes := []byte(source.String())
-	src := tokenize("sexpr_test", bytes)
-	ast := Parse(&src)
-	dump := ast.dump(false)
+	src := NewSource("ast_test", *text)
+
+	handler := util.NewHandler()
+	tokenizer := NewTokenizer(&handler)
+	tokenizer.Tokenize(&src)
+	if !handler.Empty() {
+		errs := handler.AllErrors()
+		t.Error(strings.Join(errs, " "))
+	}
+
+	parser := NewParser(&handler)
+	ast := parser.Parse(&src)
+	if !handler.Empty() {
+		errs := handler.AllErrors()
+		t.Error(strings.Join(errs, " "))
+	}
+	dump := ast.Dump(false)
 	formatted := formatSExpr(dump)
 	unformatted := unformatSExpr(formatted)
 	if dump != unformatted {

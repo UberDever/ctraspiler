@@ -1,13 +1,15 @@
 package syntax
 
 import (
+	"some/util"
+	"strings"
 	"testing"
 
 	"golang.org/x/exp/utf8string"
 )
 
 func TestTokenizer(t *testing.T) {
-	source := utf8string.NewString(`fn identifier()
+	text := utf8string.NewString(`fn identifier()
 	break
 	&& == + - * / 
 	!
@@ -16,10 +18,15 @@ func TestTokenizer(t *testing.T) {
 	"some string"
 	Идентификатор
 	`)
-	src := tokenize("tokenizer_test", []byte(source.String()))
+
+	handler := util.NewHandler()
+	src := NewSource("tokenizer_test", *text)
+	tokenizer := NewTokenizer(&handler)
+	tokenizer.Tokenize(&src)
+
 	tokens := src.tokens
 	expected := [...]struct {
-		TokenTag
+		tokenTag
 		string
 	}{
 		{TokenKeyword, "fn"},
@@ -45,6 +52,12 @@ func TestTokenizer(t *testing.T) {
 		{TokenIdentifier, "Идентификатор"},
 		{TokenTerminator, "\n"},
 	}
+
+	if !handler.Empty() {
+		errs := handler.AllErrors()
+		t.Error(strings.Join(errs, " "))
+	}
+
 	if tokens[len(tokens)-1].tag != TokenEOF {
 		t.Errorf("Missed EOF at the end of token stream")
 	}
@@ -68,12 +81,12 @@ func TestTokenizer(t *testing.T) {
 	for i := 0; i < tokensLen; i++ {
 		lhs := tokens[i]
 		rhs := expected[i]
-		asStr := source.Slice(int(lhs.start), int(lhs.end)+1)
+		asStr := text.Slice(int(lhs.start), int(lhs.end)+1)
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.tag != rhs.TokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.TokenTag)
+		if lhs.tag != rhs.tokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.tokenTag)
 		}
 	}
 }

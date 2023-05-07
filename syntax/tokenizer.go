@@ -3,22 +3,22 @@ package syntax
 import (
 	"math"
 	antlr_parser "some/antlr"
+	"some/util"
 
 	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
-	"golang.org/x/exp/utf8string"
 )
 
-type TokenTag int
-type TokenIndex int
+type tokenTag int
+type tokenIndex int
 
 const (
-	TokenIndexInvalid TokenIndex = math.MinInt
+	tokenIndexInvalid tokenIndex = math.MinInt
 )
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution
 // i.e. increase granularity
 const (
-	TokenEOF          TokenTag = -1
+	TokenEOF          tokenTag = -1
 	TokenKeyword               = antlr_parser.SomeKEYWORD
 	TokenIdentifier            = antlr_parser.SomeIDENTIFIER
 	TokenPunctuation           = antlr_parser.SomeOTHER_OP
@@ -36,24 +36,52 @@ const (
 	TokenLineComment           = antlr_parser.SomeLINE_COMMENT
 )
 
-type Token struct {
-	tag   TokenTag
+type token struct {
+	tag   tokenTag
 	start int
 	end   int
 	line  int
 	col   int
 }
 
-var EOF = Token{
-	tag:   TokenEOF,
-	start: -1,
-	end:   -1,
-	line:  -1,
-	col:   -1,
+type tokenizer struct {
+	handler *util.ErrorHandler
 }
 
-func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []Token {
-	semicolon := Token{
+func NewTokenizer(handler *util.ErrorHandler) tokenizer {
+	return tokenizer{handler}
+}
+
+func (tok *tokenizer) Tokenize(src *source) {
+	is := antlr.NewInputStream(src.text.String())
+	lexer := antlr_parser.NewSome(is)
+
+	antlrTokens := lexer.GetAllTokens()
+	src.tokens = make([]token, 0, len(antlrTokens))
+	for i := range antlrTokens {
+		t := antlrTokens[i]
+		if t.GetChannel() == antlr.TokenHiddenChannel {
+			continue
+		}
+		if t.GetTokenType() == antlr_parser.SomeTERMINATOR ||
+			t.GetTokenType() == antlr_parser.SomeLINE_COMMENT {
+			src.tokens = tok.tryInsertSemicolon(src, t)
+			continue
+		}
+		src.tokens = append(src.tokens, token{
+			tag:   tokenTag(t.GetTokenType()),
+			start: t.GetStart(),
+			end:   t.GetStop(),
+			line:  t.GetLine(),
+			col:   t.GetColumn(),
+		})
+	}
+	src.tokens = append(src.tokens, token{TokenEOF, -1, -1, -1, -1})
+	return
+}
+
+func (tok *tokenizer) tryInsertSemicolon(s *source, terminator antlr.Token) []token {
+	semicolon := token{
 		tag:   TokenTerminator,
 		start: terminator.GetStart(),
 		end:   terminator.GetStop(),
@@ -61,9 +89,9 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 		col:   terminator.GetColumn(),
 	}
 
-	if len(tokens) > 0 {
-		i := len(tokens) - 1
-		last := src.token(TokenIndex(i))
+	if len(s.tokens) > 0 {
+		i := len(s.tokens) - 1
+		last := s.token(tokenIndex(i))
 
 		switch last.tag {
 		case TokenIdentifier:
@@ -77,59 +105,28 @@ func tryInsertSemicolon(src Source, terminator antlr.Token, tokens []Token) []To
 		case TokenRuneLit:
 			fallthrough
 		case TokenStringLit:
-			tokens = append(tokens, semicolon)
+			s.tokens = append(s.tokens, semicolon)
 
 		case TokenKeyword:
-			lexeme := src.lexeme(src.token(TokenIndex(i)))
+			lexeme := s.Lexeme(tokenIndex(i))
 			if lexeme == "break" ||
 				lexeme == "continue" ||
 				lexeme == "fallthrough" ||
 				lexeme == "return" {
-				tokens = append(tokens, semicolon)
+				s.tokens = append(s.tokens, semicolon)
 
 			}
 		case TokenPunctuation:
-			lexeme := src.lexeme(src.token(TokenIndex(i)))
+			lexeme := s.Lexeme(tokenIndex(i))
 			if lexeme == "++" ||
 				lexeme == "--" ||
 				lexeme == ")" ||
 				lexeme == "]" ||
 				lexeme == "}" {
-				tokens = append(tokens, semicolon)
+				s.tokens = append(s.tokens, semicolon)
 			}
 		}
 	}
 
-	return tokens
-}
-
-func tokenize(filename string, source []byte) Source {
-	src := NewSource(filename, *utf8string.NewString(string(source)))
-
-	is := antlr.NewInputStream(string(source))
-	lexer := antlr_parser.NewSome(is)
-
-	antlrTokens := lexer.GetAllTokens()
-	src.tokens = make([]Token, 0, len(antlrTokens))
-	for i := range antlrTokens {
-		t := antlrTokens[i]
-		if t.GetChannel() == antlr.TokenHiddenChannel {
-			continue
-		}
-		if t.GetTokenType() == antlr_parser.SomeTERMINATOR ||
-			t.GetTokenType() == antlr_parser.SomeLINE_COMMENT {
-			src.tokens = tryInsertSemicolon(src, t, src.tokens)
-			continue
-		}
-		src.tokens = append(src.tokens, Token{
-			tag:   TokenTag(t.GetTokenType()),
-			start: t.GetStart(),
-			end:   t.GetStop(),
-			line:  t.GetLine(),
-			col:   t.GetColumn(),
-		})
-	}
-	src.tokens = append(src.tokens, EOF)
-
-	return src
+	return s.tokens
 }
