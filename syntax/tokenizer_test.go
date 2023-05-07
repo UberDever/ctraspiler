@@ -8,7 +8,7 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-func TestTokenizer(t *testing.T) {
+func TestTokenizerTokens(t *testing.T) {
 	text := utf8string.NewString(`fn identifier()
 	break
 	&& == + - * / 
@@ -69,6 +69,84 @@ func TestTokenizer(t *testing.T) {
 	// 		fmt.Print(";")
 	// 	} else {
 	// 		fmt.Print(source.Slice(int(t.start), int(t.end)+1))
+	// 	}
+	// 	fmt.Print(" ")
+	// }
+
+	if len(tokens) != len(expected) {
+		t.Errorf("Same tokens arrays expected, got tokens=%d and expected=%d", len(tokens), len(expected))
+	}
+
+	tokensLen := len(tokens)
+	for i := 0; i < tokensLen; i++ {
+		lhs := tokens[i]
+		rhs := expected[i]
+		asStr := text.Slice(int(lhs.start), int(lhs.end)+1)
+		if asStr != rhs.string {
+			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
+		}
+		if lhs.tag != rhs.tokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.tokenTag)
+		}
+	}
+}
+
+func TestTokenizerProgram(t *testing.T) {
+	text := utf8string.NewString(`
+	fn main() {
+
+	}
+
+	fn some(a, b) {
+
+	}
+	`)
+
+	handler := util.NewHandler()
+	src := NewSource("tokenizer_test", *text)
+	tokenizer := NewTokenizer(&handler)
+	tokenizer.Tokenize(&src)
+
+	tokens := src.tokens
+	expected := [...]struct {
+		tokenTag
+		string
+	}{
+		{TokenKeyword, "fn"},
+		{TokenIdentifier, "main"},
+		{TokenPunctuation, "("},
+		{TokenPunctuation, ")"},
+		{TokenPunctuation, "{"},
+		{TokenPunctuation, "}"},
+		{TokenTerminator, "\n"},
+		{TokenKeyword, "fn"},
+		{TokenIdentifier, "some"},
+		{TokenPunctuation, "("},
+		{TokenIdentifier, "a"},
+		{TokenPunctuation, ","},
+		{TokenIdentifier, "b"},
+		{TokenPunctuation, ")"},
+		{TokenPunctuation, "{"},
+		{TokenPunctuation, "}"},
+		{TokenTerminator, "\n"},
+	}
+
+	if !handler.Empty() {
+		errs := handler.AllErrors()
+		t.Error(strings.Join(errs, " "))
+	}
+
+	if tokens[len(tokens)-1].tag != TokenEOF {
+		t.Errorf("Missed EOF at the end of token stream")
+	}
+	tokens = tokens[:len(tokens)-1]
+
+	// for i := range tokens {
+	// 	t := tokens[i]
+	// 	if t.tag == TokenTerminator {
+	// 		fmt.Print(";")
+	// 	} else {
+	// 		fmt.Print(src.Lexeme(tokenIndex(i)))
 	// 	}
 	// 	fmt.Print(" ")
 	// }

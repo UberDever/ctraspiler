@@ -13,8 +13,8 @@ import (
 func isASTValid(nodes []Node) (Node, int, bool) {
 	for i, n := range nodes {
 		if n.tokenIdx == tokenIndexInvalid ||
-			n.lhs == nodeIndexInvalid ||
-			n.rhs == nodeIndexInvalid {
+			n.lhs == NodeIndexInvalid ||
+			n.rhs == NodeIndexInvalid {
 			return n, i, false
 		}
 	}
@@ -94,20 +94,20 @@ func TestParseConstDecl(t *testing.T) {
 	(Source
 		(FunctionDecl (main) 
 			(Signature ())
-				(Block 
-					(ConstDecl 
-						(_) 
-						(ExpressionList (null)))
-					(ConstDecl 
-						(a b) 
-						(ExpressionList (8) (2)))
-					(ConstDecl 
-						(c d e) 
-						(ExpressionList 
-							(* (8) (3))
-							(- (16))
-							("E")
-						))
+			(Block 
+				(ConstDecl 
+					(_) 
+					(ExpressionList (null)))
+				(ConstDecl 
+					(a b) 
+					(ExpressionList (8) (2)))
+				(ConstDecl 
+					(c d e) 
+					(ExpressionList 
+						(* (8) (3))
+						(- (16))
+						("E")
+					))
 	)))`
 	if e := runTest(lhs, rhs); e != nil {
 		t.Error(e)
@@ -128,15 +128,15 @@ func TestParseSomeExpressions(t *testing.T) {
 	(Source
 		(FunctionDecl (main)
 			(Signature ())
-				(Block 
-					(ConstDecl (x) (ExpressionList (8)))
-					(+ (* (x) (8)) (3))
-					(+ (x) (/ (3) (4)))
-					(Call (f) 
-						(ExpressionList (x) (Get (x) (y))))
-					(Assign
-						(ExpressionList (x) (Get (x) (y)))
-						(ExpressionList (Get (x) (y)) (x)))
+			(Block 
+				(ConstDecl (x) (ExpressionList (8)))
+				(+ (* (x) (8)) (3))
+				(+ (x) (/ (3) (4)))
+				(Call (f) 
+					(ExpressionList (x) (Get (x) (y))))
+				(Assign
+					(ExpressionList (x) (Get (x) (y)))
+					(ExpressionList (Get (x) (y)) (x)))
 				
 	)))`
 	if e := runTest(lhs, rhs); e != nil {

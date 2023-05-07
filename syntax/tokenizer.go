@@ -77,7 +77,6 @@ func (tok *tokenizer) Tokenize(src *source) {
 		})
 	}
 	src.tokens = append(src.tokens, token{TokenEOF, -1, -1, -1, -1})
-	return
 }
 
 func (tok *tokenizer) tryInsertSemicolon(s *source, terminator antlr.Token) []token {

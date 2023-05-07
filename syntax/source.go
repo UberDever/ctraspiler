@@ -2,8 +2,6 @@ package syntax
 
 import (
 	"fmt"
-	"some/util"
-	"strings"
 
 	"golang.org/x/exp/utf8string"
 )
@@ -36,21 +34,4 @@ func (s source) traceToken(tag tokenTag, lexeme string, line int, col int) strin
 		str += "\tloc = " + fmt.Sprintf("%d", line) + ":" + fmt.Sprintf("%d", col) + "\n"
 	}
 	return str
-}
-
-func (s source) nearToken(i tokenIndex) string {
-	margin := 3
-	index := int(i)
-	start := util.Max(0, index-margin)
-	end := util.Min(len(s.tokens)-1, index+margin)
-	tokens := s.tokens[start:end]
-	ss := strings.Builder{}
-	for _, t := range tokens {
-		if t.tag == TokenTerminator {
-			ss.WriteByte(';')
-			continue
-		}
-		ss.WriteString(s.Lexeme(i) + " ")
-	}
-	return ss.String()
 }

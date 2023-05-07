@@ -74,6 +74,7 @@ func (e Error) Position() (line int, col int, filename string) {
 	return
 }
 
+// TODO: rather handling errors, maybe this could be universal logging hanlder?
 type ErrorHandler struct {
 	errors []Error
 }

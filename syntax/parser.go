@@ -7,7 +7,7 @@ const (
 	precHighest = 7
 )
 
-func binaryPrecedenceAndTag(lexeme string) (int, nodeTag) {
+func binaryPrecedenceAndTag(lexeme string) (int, NodeTag) {
 	switch lexeme {
 	case "||":
 		return 1, NodeOr
@@ -37,7 +37,7 @@ func binaryPrecedenceAndTag(lexeme string) (int, nodeTag) {
 	return precLowest, nodeUndefined
 }
 
-func unaryTag(lexeme string) nodeTag {
+func unaryTag(lexeme string) NodeTag {
 	switch lexeme {
 	case "+":
 		return NodeUnaryPlus
@@ -115,9 +115,9 @@ func (p *parser) rollback() {
 	p.col = c.col
 }
 
-func (p *parser) addNode(n Node) nodeIndex {
+func (p *parser) addNode(n Node) NodeIndex {
 	p.ast.nodes = append(p.ast.nodes, n)
-	return nodeIndex(len(p.ast.nodes) - 1)
+	return NodeIndex(len(p.ast.nodes) - 1)
 }
 
 func (p *parser) matchTag(tag tokenTag) bool {
@@ -175,11 +175,11 @@ func (p *parser) restoreScratch(old_size int) {
 	p.scratch = p.scratch[:old_size]
 }
 
-func (p *parser) addScratchToExtra(scratch_top int) (start nodeIndex, end nodeIndex) {
+func (p *parser) addScratchToExtra(scratch_top int) (start NodeIndex, end NodeIndex) {
 	slice := p.scratch[scratch_top:]
 	p.ast.extra = append(p.ast.extra, slice...)
-	start = nodeIndex(len(p.ast.extra) - len(slice))
-	end = nodeIndex(len(p.ast.extra))
+	start = NodeIndex(len(p.ast.extra) - len(slice))
+	end = NodeIndex(len(p.ast.extra))
 	return
 }
 
@@ -190,9 +190,8 @@ func (p *parser) isLiteral() bool {
 }
 
 func (p *parser) parseSource() {
-	tag, tokenIdx, lhs, rhs := NodeSource, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+	tag, tokenIdx, lhs, rhs := NodeSource, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
-
 	// make root the first node
 	p.ast.nodes = append(p.ast.nodes, Node{})
 
@@ -214,35 +213,39 @@ func (p *parser) parseSource() {
 	p.ast.nodes[0] = NodeConstructor[tag](tokenIdx, lhs, rhs)
 }
 
-func (p *parser) parseFunctionDecl() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeFunctionDecl, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseFunctionDecl() NodeIndex {
+	tag, tokenIdx, extra := NodeFunctionDecl, tokenIndexInvalid, NodeIndexInvalid
+	scratch_top := len(p.scratch)
+	defer p.restoreScratch(scratch_top)
 
-	p.expect(TokenKeyword, "fn")
-	// this will store identifier to ast.nodes
-	// we will find that node later by ast.nodes traversal
 	tokenIdx = p.current
-	_ = p.parseIdentifier()
+	p.expect(TokenKeyword, "fn")
+	name := p.parseIdentifier()
 
-	lhs = p.parseSignature()
-	rhs = nodeIndexUndefined
+	signature := p.parseSignature()
+	var block NodeIndex = NodeIndexUndefined
 	if p.matchToken(TokenPunctuation, "{") {
-		rhs = p.parseBlock()
+		block = p.parseBlock()
 	}
 	p.expect(TokenTerminator, "")
 
-	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
+	p.scratch = append(p.scratch, anyIndex(signature))
+	p.scratch = append(p.scratch, anyIndex(block))
+	extra, _ = p.addScratchToExtra(scratch_top)
+
+	return p.addNode(NodeConstructor[tag](tokenIdx, name, extra))
 }
 
-func (p *parser) parseSignature() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeSignature, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseSignature() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeSignature, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
-	rhs = nodeIndexUndefined
+	rhs = NodeIndexUndefined
 
 	p.expect(TokenPunctuation, "(")
 	if p.matchToken(TokenPunctuation, ")") {
 		p.next()
 		lhs = p.addNode(NodeConstructor[NodeIdentifierList](
-			p.current, nodeIndexUndefined, nodeIndexUndefined))
+			p.current, NodeIndexUndefined, NodeIndexUndefined))
 		return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 	}
 
@@ -252,8 +255,8 @@ func (p *parser) parseSignature() nodeIndex {
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseBlock() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeBlock, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseBlock() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeBlock, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	scratch_top := len(p.scratch)
@@ -261,13 +264,14 @@ func (p *parser) parseBlock() nodeIndex {
 
 	p.expect(TokenPunctuation, "{")
 	if p.matchToken(TokenPunctuation, "}") {
-		lhs, rhs = nodeIndexUndefined, nodeIndexUndefined
+		lhs, rhs = NodeIndexUndefined, NodeIndexUndefined
+		p.next()
 		return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 	}
 
 	for !p.matchToken(TokenPunctuation, "}") {
 		i := p.parseStatement()
-		if i != nodeIndexInvalid {
+		if i != NodeIndexInvalid {
 			p.scratch = append(p.scratch, anyIndex(i))
 		}
 		p.expect(TokenTerminator, "")
@@ -278,10 +282,10 @@ func (p *parser) parseBlock() nodeIndex {
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseStatement() nodeIndex {
+func (p *parser) parseStatement() NodeIndex {
 	if p.matchTag(TokenTerminator) {
 		// skip empty statement
-		return nodeIndexInvalid
+		return NodeIndexInvalid
 	} else if p.matchToken(TokenKeyword, "const") {
 		return p.parseConstDecl()
 	} else {
@@ -302,8 +306,8 @@ func (p *parser) parseStatement() nodeIndex {
 	}
 }
 
-func (p *parser) parseConstDecl() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeConstDecl, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseConstDecl() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeConstDecl, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	p.expect(TokenKeyword, "const")
@@ -314,8 +318,8 @@ func (p *parser) parseConstDecl() nodeIndex {
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseAssignment() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeAssignment, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseAssignment() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeAssignment, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	lhs = p.parseExpressionList()
@@ -325,8 +329,8 @@ func (p *parser) parseAssignment() nodeIndex {
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseExpressionList() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeExpressionList, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseExpressionList() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeExpressionList, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	scratch_top := len(p.scratch)
@@ -346,12 +350,12 @@ func (p *parser) parseExpressionList() nodeIndex {
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseExpression() nodeIndex {
+func (p *parser) parseExpression() NodeIndex {
 	return p.parseBinaryExpr(precLowest + 1)
 }
 
-func (p *parser) parseBinaryExpr(precedence int) nodeIndex {
-	tokenIdx, lhs, rhs := tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseBinaryExpr(precedence int) NodeIndex {
+	tokenIdx, lhs, rhs := tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 
 	lhs = p.parseUnaryExpr()
 	for {
@@ -368,8 +372,8 @@ func (p *parser) parseBinaryExpr(precedence int) nodeIndex {
 	}
 }
 
-func (p *parser) parseUnaryExpr() nodeIndex {
-	tokenIdx, lhs, rhs := tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseUnaryExpr() NodeIndex {
+	tokenIdx, lhs, rhs := tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	tag := unaryTag(p.src.Lexeme(p.current))
@@ -378,12 +382,12 @@ func (p *parser) parseUnaryExpr() nodeIndex {
 	}
 	p.next()
 	lhs = p.parseUnaryExpr()
-	rhs = nodeIndexUndefined
+	rhs = NodeIndexUndefined
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parsePrimaryExpr() nodeIndex {
-	tokenIdx, lhs, rhs := tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parsePrimaryExpr() NodeIndex {
+	tokenIdx, lhs, rhs := tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	lhs = p.parseOperand()
@@ -395,7 +399,7 @@ func (p *parser) parsePrimaryExpr() nodeIndex {
 	} else if p.matchToken(TokenPunctuation, "(") {
 		p.next()
 		tag := NodeCall
-		rhs = nodeIndexUndefined
+		rhs = NodeIndexUndefined
 		if !p.matchToken(TokenPunctuation, ")") {
 			rhs = p.parseExpressionList()
 			p.expect(TokenPunctuation, ")")
@@ -407,7 +411,7 @@ func (p *parser) parsePrimaryExpr() nodeIndex {
 	return lhs
 }
 
-func (p *parser) parseOperand() nodeIndex {
+func (p *parser) parseOperand() NodeIndex {
 	if p.matchTag(TokenIdentifier) {
 		return p.parseIdentifier()
 	}
@@ -420,8 +424,8 @@ func (p *parser) parseOperand() nodeIndex {
 	return i
 }
 
-func (p *parser) parseIdentifierList() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeIdentifierList, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseIdentifierList() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeIdentifierList, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
 	scratch_top := len(p.scratch)
@@ -441,19 +445,19 @@ func (p *parser) parseIdentifierList() nodeIndex {
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseIdentifier() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeIdentifier, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseIdentifier() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeIdentifier, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
-	lhs, rhs = nodeIndexUndefined, nodeIndexUndefined
+	lhs, rhs = NodeIndexUndefined, NodeIndexUndefined
 	p.expect(TokenIdentifier, "")
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
-func (p *parser) parseLiteral() nodeIndex {
-	tag, tokenIdx, lhs, rhs := NodeIntLiteral, tokenIndexInvalid, nodeIndexInvalid, nodeIndexInvalid
+func (p *parser) parseLiteral() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeIntLiteral, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
-	lhs, rhs = nodeIndexUndefined, nodeIndexUndefined
+	lhs, rhs = NodeIndexUndefined, NodeIndexUndefined
 
 	if p.matchTag(TokenIntLit) {
 		tag = NodeIntLiteral
