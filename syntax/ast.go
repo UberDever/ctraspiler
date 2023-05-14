@@ -29,6 +29,7 @@ const (
 	NodeAssignment
 	NodeReturnStmt
 
+	NodeExpression
 	NodeSelector
 	NodeCall
 
@@ -64,7 +65,7 @@ const (
 // time introspection / macro system. But the latter assumes AST transformation,
 // what is not the point here - we just want to fill the maps with handlers, that
 // named specifically, that's all
-var NodeConstructor = [...]func(tokenIndex, NodeIndex, NodeIndex) Node{
+var NodeConstructor = [...]func(TokenIndex, NodeIndex, NodeIndex) Node{
 	NodeSource: NewSourceRoot,
 	NodeBlock:  NewBlock,
 
@@ -74,8 +75,9 @@ var NodeConstructor = [...]func(tokenIndex, NodeIndex, NodeIndex) Node{
 	NodeAssignment:   NewAssignment,
 	NodeReturnStmt:   NewReturnStmt,
 
-	NodeSelector: NewSelector,
-	NodeCall:     NewCall,
+	NodeExpression: NewExpression,
+	NodeSelector:   NewSelector,
+	NodeCall:       NewCall,
 
 	NodeOr:                NewOr,
 	NodeAnd:               NewAnd,
@@ -113,8 +115,9 @@ var NodeString = [...]func(AST, NodeIndex) string{
 	NodeAssignment:   Assignment_String,
 	NodeReturnStmt:   ReturnStmt_String,
 
-	NodeSelector: Selector_String,
-	NodeCall:     Call_String,
+	NodeExpression: Expression_String,
+	NodeSelector:   Selector_String,
+	NodeCall:       Call_String,
 
 	NodeOr:                Or_String,
 	NodeAnd:               And_String,
@@ -152,8 +155,9 @@ var NodeChildren = [...]func(AST, NodeIndex) []NodeIndex{
 	NodeAssignment:   Assignment_Children,
 	NodeReturnStmt:   ReturnStmt_Children,
 
-	NodeSelector: Selector_Children,
-	NodeCall:     Call_Children,
+	NodeExpression: Expression_Children,
+	NodeSelector:   Selector_Children,
+	NodeCall:       Call_Children,
 
 	NodeOr:                Or_Children,
 	NodeAnd:               And_Children,
@@ -206,11 +210,12 @@ func init() {
 
 type Node struct {
 	tag      NodeTag
-	tokenIdx tokenIndex
+	tokenIdx TokenIndex
 	lhs, rhs NodeIndex
 }
 
-func (n Node) Tag() NodeTag { return n.tag }
+func (n Node) Tag() NodeTag      { return n.tag }
+func (n Node) Token() TokenIndex { return n.tokenIdx }
 
 // General pattern of typed nodes:
 // Full and interpreted struct data (typed node)
@@ -235,7 +240,7 @@ func (ast AST) SourceRoot(n Node) SourceRoot {
 	}
 }
 
-func NewSourceRoot(rootToken tokenIndex, start NodeIndex, end NodeIndex) Node {
+func NewSourceRoot(rootToken TokenIndex, start NodeIndex, end NodeIndex) Node {
 	return Node{
 		tag:      NodeSource,
 		tokenIdx: rootToken,
@@ -269,7 +274,7 @@ func (ast AST) FunctionDecl(n Node) FunctionDecl {
 	return node
 }
 
-func NewFunctionDecl(tokenIdx tokenIndex, signature NodeIndex, body NodeIndex) Node {
+func NewFunctionDecl(tokenIdx TokenIndex, signature NodeIndex, body NodeIndex) Node {
 	return Node{
 		tag:      NodeFunctionDecl,
 		tokenIdx: tokenIdx,
@@ -297,7 +302,7 @@ func (ast AST) Signature(n Node) Signature {
 	}
 }
 
-func NewSignature(tokenIdx tokenIndex, parameters NodeIndex, rhs NodeIndex) Node {
+func NewSignature(tokenIdx TokenIndex, parameters NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeSignature,
 		tokenIdx: tokenIdx,
@@ -330,7 +335,7 @@ func (ast AST) Block(n Node) Block {
 	}
 }
 
-func NewBlock(tokenIdx tokenIndex, start NodeIndex, end NodeIndex) Node {
+func NewBlock(tokenIdx TokenIndex, start NodeIndex, end NodeIndex) Node {
 	return Node{
 		tag:      NodeBlock,
 		tokenIdx: tokenIdx,
@@ -360,7 +365,7 @@ func (ast AST) ConstDecl(n Node) ConstDecl {
 	}
 }
 
-func NewConstDecl(tokenIdx tokenIndex, identifierList NodeIndex, expressionList NodeIndex) Node {
+func NewConstDecl(tokenIdx TokenIndex, identifierList NodeIndex, expressionList NodeIndex) Node {
 	return Node{
 		tag:      NodeConstDecl,
 		tokenIdx: tokenIdx,
@@ -390,7 +395,7 @@ func (ast AST) Assignment(n Node) Assignment {
 	}
 }
 
-func NewAssignment(tokenIdx tokenIndex, exprList1 NodeIndex, exprList2 NodeIndex) Node {
+func NewAssignment(tokenIdx TokenIndex, exprList1 NodeIndex, exprList2 NodeIndex) Node {
 	return Node{
 		tag:      NodeAssignment,
 		tokenIdx: tokenIdx,
@@ -418,7 +423,7 @@ func (ast AST) ReturnStmt(n Node) ReturnStmt {
 	}
 }
 
-func NewReturnStmt(tokenIdx tokenIndex, expressions NodeIndex, rhs NodeIndex) Node {
+func NewReturnStmt(tokenIdx TokenIndex, expressions NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeReturnStmt,
 		tokenIdx: tokenIdx,
@@ -436,6 +441,34 @@ func ReturnStmt_String(ast AST, i NodeIndex) string {
 	return "Return"
 }
 
+type Expression struct {
+	Expression NodeIndex
+}
+
+func (ast AST) Expression(n Node) Expression {
+	return Expression{
+		Expression: n.lhs,
+	}
+}
+
+func NewExpression(tokenIdx TokenIndex, expr NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeExpression,
+		tokenIdx: tokenIdx,
+		lhs:      expr,
+		rhs:      rhs,
+	}
+}
+
+func Expression_Children(ast AST, i NodeIndex) []NodeIndex {
+	n := ast.Expression(ast.nodes[i])
+	return []NodeIndex{n.Expression}
+}
+
+func Expression_String(ast AST, i NodeIndex) string {
+	return "Expr"
+}
+
 type Selector struct {
 	LhsExpr    NodeIndex
 	Identifier NodeIndex
@@ -448,7 +481,7 @@ func (ast AST) Selector(n Node) Selector {
 	}
 }
 
-func NewSelector(tokenIdx tokenIndex, expr NodeIndex, identifier NodeIndex) Node {
+func NewSelector(tokenIdx TokenIndex, expr NodeIndex, identifier NodeIndex) Node {
 	return Node{
 		tag:      NodeSelector,
 		tokenIdx: tokenIdx,
@@ -478,7 +511,7 @@ func (ast AST) Call(n Node) Call {
 	}
 }
 
-func NewCall(tokenIdx tokenIndex, expr NodeIndex, args NodeIndex) Node {
+func NewCall(tokenIdx TokenIndex, expr NodeIndex, args NodeIndex) Node {
 	return Node{
 		tag:      NodeCall,
 		tokenIdx: tokenIdx,
@@ -509,7 +542,7 @@ func (ast AST) Or(n Node) Or {
 	}
 }
 
-func NewOr(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewOr(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeOr,
 		tokenIdx: tokenIdx,
@@ -540,7 +573,7 @@ func (ast AST) And(n Node) And {
 	}
 }
 
-func NewAnd(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewAnd(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeAnd,
 		tokenIdx: tokenIdx,
@@ -571,7 +604,7 @@ func (ast AST) Equals(n Node) Equals {
 	}
 }
 
-func NewEquals(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeEquals,
 		tokenIdx: tokenIdx,
@@ -602,7 +635,7 @@ func (ast AST) NotEquals(n Node) NotEquals {
 	}
 }
 
-func NewNotEquals(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewNotEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeNotEquals,
 		tokenIdx: tokenIdx,
@@ -633,7 +666,7 @@ func (ast AST) GreaterThan(n Node) GreaterThan {
 	}
 }
 
-func NewGreaterThan(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewGreaterThan(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeGreaterThan,
 		tokenIdx: tokenIdx,
@@ -664,7 +697,7 @@ func (ast AST) LessThan(n Node) LessThan {
 	}
 }
 
-func NewLessThan(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewLessThan(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeLessThan,
 		tokenIdx: tokenIdx,
@@ -695,7 +728,7 @@ func (ast AST) GreaterThanEquals(n Node) GreaterThanEquals {
 	}
 }
 
-func NewGreaterThanEquals(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewGreaterThanEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeGreaterThanEquals,
 		tokenIdx: tokenIdx,
@@ -726,7 +759,7 @@ func (ast AST) LessThanEquals(n Node) LessThanEquals {
 	}
 }
 
-func NewLessThanEquals(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewLessThanEquals(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeLessThanEquals,
 		tokenIdx: tokenIdx,
@@ -757,7 +790,7 @@ func (ast AST) BinaryPlus(n Node) BinaryPlus {
 	}
 }
 
-func NewBinaryPlus(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewBinaryPlus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeBinaryPlus,
 		tokenIdx: tokenIdx,
@@ -788,7 +821,7 @@ func (ast AST) BinaryMinus(n Node) BinaryMinus {
 	}
 }
 
-func NewBinaryMinus(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewBinaryMinus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeBinaryMinus,
 		tokenIdx: tokenIdx,
@@ -819,7 +852,7 @@ func (ast AST) Multiply(n Node) Multiply {
 	}
 }
 
-func NewMultiply(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewMultiply(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeMultiply,
 		tokenIdx: tokenIdx,
@@ -850,7 +883,7 @@ func (ast AST) Divide(n Node) Divide {
 	}
 }
 
-func NewDivide(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewDivide(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeDivide,
 		tokenIdx: tokenIdx,
@@ -879,7 +912,7 @@ func (ast AST) UnaryPlus(n Node) UnaryPlus {
 	}
 }
 
-func NewUnaryPlus(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewUnaryPlus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeUnaryPlus,
 		tokenIdx: tokenIdx,
@@ -908,7 +941,7 @@ func (ast AST) UnaryMinus(n Node) UnaryMinus {
 	}
 }
 
-func NewUnaryMinus(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewUnaryMinus(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeUnaryMinus,
 		tokenIdx: tokenIdx,
@@ -936,7 +969,7 @@ func (ast AST) Not(n Node) Not {
 		Unary: n.lhs,
 	}
 }
-func NewNot(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewNot(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeNot,
 		tokenIdx: tokenIdx,
@@ -969,7 +1002,7 @@ func (ast AST) IdentifierList(n Node) IdentifierList {
 		Identifiers: ids,
 	}
 }
-func NewIdentifierList(tokenIdx tokenIndex, start NodeIndex, end NodeIndex) Node {
+func NewIdentifierList(tokenIdx TokenIndex, start NodeIndex, end NodeIndex) Node {
 	return Node{
 		tag:      NodeIdentifierList,
 		tokenIdx: tokenIdx,
@@ -1007,7 +1040,8 @@ func (ast AST) ExpressionList(n Node) ExpressionList {
 		Expressions: exprs,
 	}
 }
-func NewExpressionList(tokenIdx tokenIndex, start NodeIndex, end NodeIndex) Node {
+
+func NewExpressionList(tokenIdx TokenIndex, start NodeIndex, end NodeIndex) Node {
 	return Node{
 		tag:      NodeExpressionList,
 		tokenIdx: tokenIdx,
@@ -1023,11 +1057,11 @@ func ExpressionList_Children(ast AST, i NodeIndex) []NodeIndex {
 }
 
 func ExpressionList_String(ast AST, i NodeIndex) string {
-	return "ExpressionList"
+	return "Expr[]"
 }
 
 type IntLiteral struct {
-	Token tokenIndex
+	Token TokenIndex
 }
 
 func (ast AST) IntLiteral(n Node) IntLiteral {
@@ -1035,7 +1069,7 @@ func (ast AST) IntLiteral(n Node) IntLiteral {
 		Token: n.tokenIdx,
 	}
 }
-func NewIntLiteral(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewIntLiteral(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeIntLiteral,
 		tokenIdx: tokenIdx,
@@ -1055,7 +1089,7 @@ func IntLiteral_String(ast AST, i NodeIndex) string {
 }
 
 type FloatLiteral struct {
-	Token tokenIndex
+	Token TokenIndex
 }
 
 func (ast AST) FloatLiteral(n Node) FloatLiteral {
@@ -1063,7 +1097,7 @@ func (ast AST) FloatLiteral(n Node) FloatLiteral {
 		Token: n.tokenIdx,
 	}
 }
-func NewFloatLiteral(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewFloatLiteral(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeFloatLiteral,
 		tokenIdx: tokenIdx,
@@ -1083,7 +1117,7 @@ func FloatLiteral_String(ast AST, i NodeIndex) string {
 }
 
 type StringLiteral struct {
-	Token tokenIndex
+	Token TokenIndex
 }
 
 func (ast AST) StringLiteral(n Node) StringLiteral {
@@ -1091,7 +1125,7 @@ func (ast AST) StringLiteral(n Node) StringLiteral {
 		Token: n.tokenIdx,
 	}
 }
-func NewStringLiteral(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewStringLiteral(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeStringLiteral,
 		tokenIdx: tokenIdx,
@@ -1111,7 +1145,7 @@ func StringLiteral_String(ast AST, i NodeIndex) string {
 }
 
 type Identifier struct {
-	Token tokenIndex
+	Token TokenIndex
 }
 
 func (ast AST) Identifier(n Node) Identifier {
@@ -1119,7 +1153,7 @@ func (ast AST) Identifier(n Node) Identifier {
 		Token: n.tokenIdx,
 	}
 }
-func NewIdentifier(tokenIdx tokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
+func NewIdentifier(tokenIdx TokenIndex, lhs NodeIndex, rhs NodeIndex) Node {
 	return Node{
 		tag:      NodeIdentifier,
 		tokenIdx: tokenIdx,

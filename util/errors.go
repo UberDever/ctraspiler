@@ -22,7 +22,7 @@ var sources = [...]string{
 const (
 	EP_ExpectedToken errorCode = iota
 	EP_ExpectedSemicolon
-	ES_LookupFailed
+	ES_ScopecheckFailed
 )
 
 var templates = [...][]string{
@@ -35,7 +35,7 @@ var templates = [...][]string{
 	},
 	Ast: {},
 	Semantic: {
-		ES_LookupFailed: "\nLookup for identifier %s failed",
+		ES_ScopecheckFailed: "\nLookup for identifier %s failed",
 	},
 }
 

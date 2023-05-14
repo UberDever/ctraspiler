@@ -7,7 +7,7 @@ const (
 	precHighest = 7
 )
 
-func binaryPrecedenceAndTag(src *Source, i tokenIndex) (int, NodeTag) {
+func binaryPrecedenceAndTag(src *Source, i TokenIndex) (int, NodeTag) {
 	lexeme := src.Lexeme(i)
 	switch lexeme {
 	case "||":
@@ -38,7 +38,7 @@ func binaryPrecedenceAndTag(src *Source, i tokenIndex) (int, NodeTag) {
 	return precLowest, nodeUndefined
 }
 
-func unaryTag(src *Source, i tokenIndex) NodeTag {
+func unaryTag(src *Source, i TokenIndex) NodeTag {
 	lexeme := src.Lexeme(i)
 	switch lexeme {
 	case "+":
@@ -61,11 +61,11 @@ type parser struct {
 	src     *Source
 	handler *util.ErrorHandler
 
-	current   tokenIndex
+	current   TokenIndex
 	line, col int
 	scratch   []anyIndex
 
-	saved tokenIndex
+	saved TokenIndex
 	atEOF bool
 }
 
@@ -122,7 +122,7 @@ func (p *parser) addNode(n Node) NodeIndex {
 	return NodeIndex(len(p.ast.nodes) - 1)
 }
 
-func (p *parser) matchTag(tag tokenTag) bool {
+func (p *parser) matchTag(tag TokenTag) bool {
 	if p.atEOF {
 		return false
 	}
@@ -131,7 +131,7 @@ func (p *parser) matchTag(tag tokenTag) bool {
 	return c.tag == tag
 }
 
-func (p *parser) matchToken(tag tokenTag, lexeme string) bool {
+func (p *parser) matchToken(tag TokenTag, lexeme string) bool {
 	if p.atEOF {
 		return false
 	}
@@ -144,7 +144,7 @@ func (p *parser) matchToken(tag tokenTag, lexeme string) bool {
 // from variables only from literal strings) i can use it as Optional<string>
 // but optionals really is missing...
 // NOTE: this should be much more complicated with respect to error reporting
-func (p *parser) expect(tag tokenTag, lexeme string) (ok bool) {
+func (p *parser) expect(tag TokenTag, lexeme string) (ok bool) {
 	if p.atEOF {
 		return
 	}
@@ -188,6 +188,8 @@ func (p *parser) isLiteral() bool {
 		p.matchTag(TokenStringLit)
 }
 
+// NOTE: AST could be built with explicit parents in nodes, this could simplify
+// some analysis phases (maybe?) but I won't bother right now
 func (p *parser) parseSource() {
 	tag, tokenIdx, lhs, rhs := NodeSource, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
@@ -396,7 +398,12 @@ func (p *parser) parseExpressionList() NodeIndex {
 }
 
 func (p *parser) parseExpression() NodeIndex {
-	return p.parseBinaryExpr(precLowest + 1)
+	tag, tokenIdx, lhs, rhs := NodeExpression, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
+	tokenIdx = p.current
+	lhs = p.parseBinaryExpr(precLowest + 1)
+	rhs = NodeIndexUndefined
+
+	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
 func (p *parser) parseBinaryExpr(precedence int) NodeIndex {

@@ -26,7 +26,7 @@ func TestTokenizerTokens(t *testing.T) {
 
 	tokens := src.tokens
 	expected := [...]struct {
-		tokenTag
+		TokenTag
 		string
 	}{
 		{TokenKeyword, "fn"},
@@ -85,8 +85,8 @@ func TestTokenizerTokens(t *testing.T) {
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.tag != rhs.tokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.tokenTag)
+		if lhs.tag != rhs.TokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.TokenTag)
 		}
 	}
 }
@@ -109,7 +109,7 @@ func TestTokenizerProgram(t *testing.T) {
 
 	tokens := src.tokens
 	expected := [...]struct {
-		tokenTag
+		TokenTag
 		string
 	}{
 		{TokenKeyword, "fn"},
@@ -163,8 +163,8 @@ func TestTokenizerProgram(t *testing.T) {
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.tag != rhs.tokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.tokenTag)
+		if lhs.tag != rhs.TokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.TokenTag)
 		}
 	}
 }

@@ -3,9 +3,10 @@ package syntax
 import (
 	"errors"
 	"fmt"
-	"some/util"
+	u "some/util"
 	"strings"
 	"testing"
+	"text/tabwriter"
 
 	"golang.org/x/exp/utf8string"
 )
@@ -21,11 +22,36 @@ func isASTValid(nodes []Node) (Node, int, bool) {
 	return Node{}, -1, true
 }
 
+func concatVertically(lhs, rhs string) string {
+	builder := strings.Builder{}
+	table := tabwriter.NewWriter(&builder, 1, 4, 1, ' ', 0)
+	lhs_split := strings.Split(lhs, "\n")
+	rhs_split := strings.Split(rhs, "\n")
+	maxlen := u.Max(len(lhs_split), len(rhs_split))
+
+	for i := 0; i < maxlen; i++ {
+		if i >= len(lhs_split) {
+			fmt.Fprint(table, "...")
+		} else {
+			fmt.Fprint(table, lhs_split[i])
+		}
+		fmt.Fprint(table, "\t")
+		if i >= len(rhs_split) {
+			fmt.Fprint(table, "...")
+		} else {
+			fmt.Fprint(table, rhs_split[i])
+		}
+		fmt.Fprintln(table, "")
+	}
+	table.Flush()
+	return builder.String()
+}
+
 func runTest(lhs string, rhs string) error {
 	text := utf8string.NewString(lhs)
 	src := NewSource("ast_test", *text)
 
-	handler := util.NewHandler()
+	handler := u.NewHandler()
 	tokenizer := NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {
@@ -47,7 +73,10 @@ func runTest(lhs string, rhs string) error {
 		return fmt.Errorf("AST nodes failed on validity test at %d => %v", index, node)
 	}
 	if result != expected {
-		return fmt.Errorf("AST are not equal\n%s\n\n%s", formatSExpr(result), formatSExpr(expected))
+		lhs = formatSExpr(result)
+		rhs = formatSExpr(expected)
+		trace := concatVertically(lhs, rhs)
+		return fmt.Errorf("AST are not equal\n%s", trace)
 	}
 	return nil
 }
@@ -97,17 +126,19 @@ func TestParseConstDecl(t *testing.T) {
 			(Block 
 				(ConstDecl 
 					(_) 
-					(ExpressionList (null)))
+					(Expr[] (Expr (null)
+				)))
 				(ConstDecl 
 					(a b) 
-					(ExpressionList (8) (2)))
+					(Expr[] (Expr (8)) (Expr (2))
+				))
 				(ConstDecl 
 					(c d e) 
-					(ExpressionList 
-						(* (8) (3))
-						(- (16))
-						("E")
-					))
+					(Expr[] 
+						(Expr (* (8) (3)))
+						(Expr (- (16)))
+						(Expr ("E"))
+				))
 	)))`
 	if e := runTest(lhs, rhs); e != nil {
 		t.Error(e)
@@ -129,14 +160,14 @@ func TestParseSomeExpressions(t *testing.T) {
 		(FunctionDecl (main)
 			(Signature ())
 			(Block 
-				(ConstDecl (x) (ExpressionList (8)))
-				(+ (* (x) (8)) (3))
-				(+ (x) (/ (3) (4)))
-				(Call (f) 
-					(ExpressionList (x) (Get (x) (y))))
+				(ConstDecl (x) (Expr[] (Expr (8))))
+				(Expr (+ (* (x) (8)) (3)))
+				(Expr (+ (x) (/ (3) (4))))
+				(Expr (Call (f) 
+					(Expr[] (Expr (x)) (Expr (Get (x) (y))))))
 				(Assign
-					(ExpressionList (x) (Get (x) (y)))
-					(ExpressionList (Get (x) (y)) (x)))
+					(Expr[] (Expr (x)) (Expr (Get (x) (y))))
+					(Expr[] (Expr (Get (x) (y))) (Expr (x))))
 				
 	)))`
 	if e := runTest(lhs, rhs); e != nil {
@@ -155,8 +186,8 @@ func TestReturnStmt(t *testing.T) {
 		(FunctionDecl (main)
 			(Signature ())
 			(Block 
-				(Return (ExpressionList (0)
-	)))))`
+				(Return (Expr[] (Expr (0)
+	))))))`
 	if e := runTest(lhs, rhs); e != nil {
 		t.Error(e)
 	}
@@ -169,7 +200,7 @@ func TestSExprFormatting(t *testing.T) {
 	`)
 	src := NewSource("ast_test", *text)
 
-	handler := util.NewHandler()
+	handler := u.NewHandler()
 	tokenizer := NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {

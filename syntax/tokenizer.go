@@ -8,17 +8,17 @@ import (
 	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-type tokenTag int
-type tokenIndex int
+type TokenTag int
+type TokenIndex int
 
 const (
-	tokenIndexInvalid tokenIndex = math.MinInt
+	tokenIndexInvalid TokenIndex = math.MinInt
 )
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution
 // i.e. increase granularity
 const (
-	TokenEOF          tokenTag = -1
+	TokenEOF          TokenTag = -1
 	TokenKeyword               = antlr_parser.SomeKEYWORD
 	TokenIdentifier            = antlr_parser.SomeIDENTIFIER
 	TokenPunctuation           = antlr_parser.SomeOTHER_OP
@@ -37,7 +37,7 @@ const (
 )
 
 type token struct {
-	tag   tokenTag
+	tag   TokenTag
 	start int
 	end   int
 	line  int
@@ -69,7 +69,7 @@ func (tok *tokenizer) Tokenize(src *Source) {
 			continue
 		}
 		src.tokens = append(src.tokens, token{
-			tag:   tokenTag(t.GetTokenType()),
+			tag:   TokenTag(t.GetTokenType()),
 			start: t.GetStart(),
 			end:   t.GetStop(),
 			line:  t.GetLine(),
@@ -90,7 +90,7 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 
 	if len(s.tokens) > 0 {
 		i := len(s.tokens) - 1
-		last := s.token(tokenIndex(i))
+		last := s.token(TokenIndex(i))
 
 		switch last.tag {
 		case TokenIdentifier:
@@ -107,7 +107,7 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 			s.tokens = append(s.tokens, semicolon)
 
 		case TokenKeyword:
-			lexeme := s.Lexeme(tokenIndex(i))
+			lexeme := s.Lexeme(TokenIndex(i))
 			if lexeme == "break" ||
 				lexeme == "continue" ||
 				lexeme == "fallthrough" ||
@@ -116,7 +116,7 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 
 			}
 		case TokenPunctuation:
-			lexeme := s.Lexeme(tokenIndex(i))
+			lexeme := s.Lexeme(TokenIndex(i))
 			if lexeme == "++" ||
 				lexeme == "--" ||
 				lexeme == ")" ||

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-func runLookup(code string) error {
+func runScopecheck(code string) error {
 	text := utf8string.NewString(code)
 	src := s.NewSource("lookup_test", *text)
 
@@ -29,7 +29,7 @@ func runLookup(code string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	LookupPass(src, ast, &handler)
+	ScopecheckPass(&src, &ast, &handler)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
@@ -37,7 +37,7 @@ func runLookup(code string) error {
 	return nil
 }
 
-func TestLookupDeclarations(t *testing.T) {
+func TestScopecheckDeclarations(t *testing.T) {
 	code := `
 		fn main()
 		fn some(a, b) { }
@@ -47,12 +47,12 @@ func TestLookupDeclarations(t *testing.T) {
 			some(a, v3)
 		}
 	`
-	if e := runLookup(code); e != nil {
+	if e := runScopecheck(code); e != nil {
 		t.Error(e)
 	}
 }
 
-func TestLookupFailed(t *testing.T) {
+func TestScopecheckFailed(t *testing.T) {
 	code := `
 		fn main() {
 			some(2, 3)
@@ -64,7 +64,7 @@ func TestLookupFailed(t *testing.T) {
 			const a = c + d
 		}
 	`
-	e := runLookup(code)
+	e := runScopecheck(code)
 	if e == nil {
 		t.Error("Exprected failed lookup")
 	}
@@ -74,7 +74,7 @@ func TestLookupFailed(t *testing.T) {
 	}
 	for _, fail := range failed {
 		if !strings.Contains(e.Error(), fail) {
-			t.Error("Lookup fail error message malformed")
+			t.Error("Scopecheck fail error message malformed")
 		}
 	}
 }
