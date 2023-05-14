@@ -192,7 +192,6 @@ func (p *parser) isLiteral() bool {
 // some analysis phases (maybe?) but I won't bother right now
 func (p *parser) parseSource() {
 	tag, tokenIdx, lhs, rhs := NodeSource, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
-	tokenIdx = p.current
 	// make root the first node
 	p.ast.nodes = append(p.ast.nodes, Node{})
 
@@ -200,6 +199,7 @@ func (p *parser) parseSource() {
 	defer p.restoreScratch(scratch_top)
 
 	p.next()
+	tokenIdx = p.current
 
 	for {
 		if p.atEOF {

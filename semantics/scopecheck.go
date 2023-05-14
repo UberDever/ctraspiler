@@ -17,8 +17,9 @@ type scopedDecl struct {
 	level     int
 }
 
-func (d scopedDecl) String() string {
-	return fmt.Sprintf("%d-%d:%d(%d)", d.node, d.line, d.col, d.level)
+func (d scopedDecl) String(src *s.Source, ast *s.AST) string {
+	lexeme := src.Lexeme(ast.GetNode(d.node).Token())
+	return fmt.Sprintf("%s-%d:%d", lexeme, d.line, d.col)
 }
 
 type scopeEnv struct {
@@ -56,16 +57,16 @@ func (e *scopeEnv) get(i scopeIndex) scopedDecl {
 	return e.seenDecls[i]
 }
 
-func (e *scopeEnv) lookup(node s.NodeIndex) (scopedDecl, bool) {
+func (e *scopeEnv) lookup(node s.NodeIndex) bool {
 	for i := len(e.seenDecls) - 1; i >= 0; i-- {
 		d := e.seenDecls[i]
 		lhs := s.Identifier_String(*e.ast, node)
 		rhs := s.Identifier_String(*e.ast, d.node)
 		if lhs == rhs {
-			return d, true
+			return true
 		}
 	}
-	return scopedDecl{}, false
+	return false
 }
 
 type scopecheckContext struct {
@@ -96,11 +97,11 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) {
 	dump := func() {
 		for i := range ctx.env.seenDecls {
 			d := ctx.env.seenDecls[i]
-			name := d.String()
+			name := d.String(src, ast)
 			p := d.parent
 			for p != scopeTop {
 				d := ctx.env.seenDecls[p]
-				name = d.String() + "/" + name
+				name = d.String(src, ast) + "/" + name
 				p = d.parent
 			}
 			fmt.Printf("%s ", name)
@@ -135,6 +136,11 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) {
 			ctx.usageContext = true
 
 		case s.NodeIdentifier:
+			if ctx.usageContext {
+
+			} else {
+				addDecl(i)
+			}
 			// id := ast.Identifier(ast.GetNode(i))
 			// decl, ok := ctx.env.lookup(id.Token)
 			// if !ok {

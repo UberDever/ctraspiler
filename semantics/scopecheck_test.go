@@ -66,7 +66,7 @@ func TestScopecheckFailed(t *testing.T) {
 	`
 	e := runScopecheck(code)
 	if e == nil {
-		t.Error("Exprected failed lookup")
+		t.Fatal("Expected failed lookup")
 	}
 	failed := []string{
 		"identifier some failed",
