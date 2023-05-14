@@ -2,7 +2,7 @@ package semantics
 
 import (
 	"errors"
-	sx "some/syntax"
+	s "some/syntax"
 	"some/util"
 	"strings"
 	"testing"
@@ -10,19 +10,19 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-func runTest(code string) error {
+func runLookup(code string) error {
 	text := utf8string.NewString(code)
-	src := sx.NewSource("lookup_test", *text)
+	src := s.NewSource("lookup_test", *text)
 
 	handler := util.NewHandler()
-	tokenizer := sx.NewTokenizer(&handler)
+	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	parser := sx.NewParser(&handler)
+	parser := s.NewParser(&handler)
 	ast := parser.Parse(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
@@ -47,7 +47,7 @@ func TestLookupDeclarations(t *testing.T) {
 			some(a, v3)
 		}
 	`
-	if e := runTest(code); e != nil {
+	if e := runLookup(code); e != nil {
 		t.Error(e)
 	}
 }
@@ -64,7 +64,7 @@ func TestLookupFailed(t *testing.T) {
 			const a = c + d
 		}
 	`
-	e := runTest(code)
+	e := runLookup(code)
 	if e == nil {
 		t.Error("Exprected failed lookup")
 	}

@@ -144,6 +144,24 @@ func TestParseSomeExpressions(t *testing.T) {
 	}
 }
 
+func TestReturnStmt(t *testing.T) {
+	lhs := `
+		fn main() {
+			return 0
+		}
+	`
+	rhs := `
+	(Source
+		(FunctionDecl (main)
+			(Signature ())
+			(Block 
+				(Return (ExpressionList (0)
+	)))))`
+	if e := runTest(lhs, rhs); e != nil {
+		t.Error(e)
+	}
+}
+
 func TestSExprFormatting(t *testing.T) {
 	text := utf8string.NewString(`
 		fn main()

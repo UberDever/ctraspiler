@@ -7,7 +7,8 @@ const (
 	precHighest = 7
 )
 
-func binaryPrecedenceAndTag(lexeme string) (int, NodeTag) {
+func binaryPrecedenceAndTag(src *Source, i tokenIndex) (int, NodeTag) {
+	lexeme := src.Lexeme(i)
 	switch lexeme {
 	case "||":
 		return 1, NodeOr
@@ -37,7 +38,8 @@ func binaryPrecedenceAndTag(lexeme string) (int, NodeTag) {
 	return precLowest, nodeUndefined
 }
 
-func unaryTag(lexeme string) NodeTag {
+func unaryTag(src *Source, i tokenIndex) NodeTag {
+	lexeme := src.Lexeme(i)
 	switch lexeme {
 	case "+":
 		return NodeUnaryPlus
@@ -141,34 +143,31 @@ func (p *parser) matchToken(tag tokenTag, lexeme string) bool {
 // NOTE: zero value of string is "" and because this is valid in my case (I don't pass that value
 // from variables only from literal strings) i can use it as Optional<string>
 // but optionals really is missing...
-func (p *parser) expect(tag tokenTag, lexeme string) {
+// NOTE: this should be much more complicated with respect to error reporting
+func (p *parser) expect(tag tokenTag, lexeme string) (ok bool) {
 	if p.atEOF {
 		return
 	}
 
-	matched := false
 	if lexeme == "" {
-		matched = p.matchTag(tag)
+		ok = p.matchTag(tag)
 	} else {
-		matched = p.matchToken(tag, lexeme)
+		ok = p.matchToken(tag, lexeme)
 	}
 
-	if !matched {
+	if !ok {
 		c := p.src.token(p.current)
 		expected := p.src.traceToken(tag, lexeme, int(TokenEOF), int(TokenEOF))
 		got := p.src.traceToken(c.tag, p.src.Lexeme(p.current), c.line, c.col)
 		p.handler.Add(util.NewError(
 			util.Parser, util.EP_ExpectedToken, c.line, c.col, p.src.filename, expected, got,
 		))
-
-		// discard tokens
-		for !p.atEOF {
-			p.next()
-		}
+		p.atEOF = true
 		return
 	}
 
 	p.next()
+	return
 }
 
 func (p *parser) restoreScratch(old_size int) {
@@ -219,7 +218,10 @@ func (p *parser) parseFunctionDecl() NodeIndex {
 	defer p.restoreScratch(scratch_top)
 
 	tokenIdx = p.current
-	p.expect(TokenKeyword, "fn")
+	ok := p.expect(TokenKeyword, "fn")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	name := p.parseIdentifier()
 
 	signature := p.parseSignature()
@@ -227,7 +229,10 @@ func (p *parser) parseFunctionDecl() NodeIndex {
 	if p.matchToken(TokenPunctuation, "{") {
 		block = p.parseBlock()
 	}
-	p.expect(TokenTerminator, "")
+	ok = p.expect(TokenTerminator, "")
+	if !ok {
+		return NodeIndexInvalid
+	}
 
 	p.scratch = append(p.scratch, anyIndex(signature))
 	p.scratch = append(p.scratch, anyIndex(block))
@@ -241,7 +246,10 @@ func (p *parser) parseSignature() NodeIndex {
 	tokenIdx = p.current
 	rhs = NodeIndexUndefined
 
-	p.expect(TokenPunctuation, "(")
+	ok := p.expect(TokenPunctuation, "(")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	if p.matchToken(TokenPunctuation, ")") {
 		p.next()
 		lhs = p.addNode(NodeConstructor[NodeIdentifierList](
@@ -250,7 +258,10 @@ func (p *parser) parseSignature() NodeIndex {
 	}
 
 	lhs = p.parseIdentifierList()
-	p.expect(TokenPunctuation, ")")
+	ok = p.expect(TokenPunctuation, ")")
+	if !ok {
+		return NodeIndexInvalid
+	}
 
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
@@ -262,7 +273,10 @@ func (p *parser) parseBlock() NodeIndex {
 	scratch_top := len(p.scratch)
 	defer p.restoreScratch(scratch_top)
 
-	p.expect(TokenPunctuation, "{")
+	ok := p.expect(TokenPunctuation, "{")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	if p.matchToken(TokenPunctuation, "}") {
 		lhs, rhs = NodeIndexUndefined, NodeIndexUndefined
 		p.next()
@@ -274,10 +288,16 @@ func (p *parser) parseBlock() NodeIndex {
 		if i != NodeIndexInvalid {
 			p.scratch = append(p.scratch, anyIndex(i))
 		}
-		p.expect(TokenTerminator, "")
+		ok = p.expect(TokenTerminator, "")
+		if !ok {
+			return NodeIndexInvalid
+		}
 	}
 
-	p.expect(TokenPunctuation, "}")
+	ok = p.expect(TokenPunctuation, "}")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	lhs, rhs = p.addScratchToExtra(scratch_top)
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
@@ -288,10 +308,12 @@ func (p *parser) parseStatement() NodeIndex {
 		return NodeIndexInvalid
 	} else if p.matchToken(TokenKeyword, "const") {
 		return p.parseConstDecl()
+	} else if p.matchToken(TokenKeyword, "return") {
+		return p.parseReturnStmt()
 	} else {
 		// NOTE: need to rollback here, because I don't bother
 		// to find all terminals that start an expression
-		// if grammar lets you do that this is very convenient and the right thing
+		// if grammar lets you do that this is very convenient and the right thing(TM)
 
 		p.save()
 		i := p.parseExpression()
@@ -306,13 +328,33 @@ func (p *parser) parseStatement() NodeIndex {
 	}
 }
 
+func (p *parser) parseReturnStmt() NodeIndex {
+	tag, tokenIdx, lhs, rhs := NodeReturnStmt, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
+	tokenIdx = p.current
+
+	ok := p.expect(TokenKeyword, "return")
+	if !ok {
+		return NodeIndexInvalid
+	}
+	lhs = p.parseExpressionList()
+	rhs = NodeIndexUndefined
+
+	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
+}
+
 func (p *parser) parseConstDecl() NodeIndex {
 	tag, tokenIdx, lhs, rhs := NodeConstDecl, tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
-	p.expect(TokenKeyword, "const")
+	ok := p.expect(TokenKeyword, "const")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	lhs = p.parseIdentifierList()
-	p.expect(TokenPunctuation, "=")
+	ok = p.expect(TokenPunctuation, "=")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	rhs = p.parseExpressionList()
 
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
@@ -323,7 +365,10 @@ func (p *parser) parseAssignment() NodeIndex {
 	tokenIdx = p.current
 
 	lhs = p.parseExpressionList()
-	p.expect(TokenPunctuation, "=")
+	ok := p.expect(TokenPunctuation, "=")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	rhs = p.parseExpressionList()
 
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
@@ -359,8 +404,7 @@ func (p *parser) parseBinaryExpr(precedence int) NodeIndex {
 
 	lhs = p.parseUnaryExpr()
 	for {
-		op := p.src.Lexeme(p.current)
-		opPrec, tag := binaryPrecedenceAndTag(op)
+		opPrec, tag := binaryPrecedenceAndTag(p.src, p.current)
 		if opPrec < precedence {
 			return lhs
 		}
@@ -376,7 +420,7 @@ func (p *parser) parseUnaryExpr() NodeIndex {
 	tokenIdx, lhs, rhs := tokenIndexInvalid, NodeIndexInvalid, NodeIndexInvalid
 	tokenIdx = p.current
 
-	tag := unaryTag(p.src.Lexeme(p.current))
+	tag := unaryTag(p.src, p.current)
 	if tag == nodeUndefined {
 		return p.parsePrimaryExpr()
 	}
@@ -402,7 +446,10 @@ func (p *parser) parsePrimaryExpr() NodeIndex {
 		rhs = NodeIndexUndefined
 		if !p.matchToken(TokenPunctuation, ")") {
 			rhs = p.parseExpressionList()
-			p.expect(TokenPunctuation, ")")
+			ok := p.expect(TokenPunctuation, ")")
+			if !ok {
+				return NodeIndexInvalid
+			}
 			return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 		}
 		p.next()
@@ -418,9 +465,15 @@ func (p *parser) parseOperand() NodeIndex {
 	if p.isLiteral() {
 		return p.parseLiteral()
 	}
-	p.expect(TokenPunctuation, "(")
+	ok := p.expect(TokenPunctuation, "(")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	i := p.parseExpression()
-	p.expect(TokenPunctuation, ")")
+	ok = p.expect(TokenPunctuation, ")")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	return i
 }
 
@@ -450,7 +503,10 @@ func (p *parser) parseIdentifier() NodeIndex {
 	tokenIdx = p.current
 
 	lhs, rhs = NodeIndexUndefined, NodeIndexUndefined
-	p.expect(TokenIdentifier, "")
+	ok := p.expect(TokenIdentifier, "")
+	if !ok {
+		return NodeIndexInvalid
+	}
 	return p.addNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 

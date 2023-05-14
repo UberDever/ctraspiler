@@ -23,11 +23,15 @@ Block:
 
 Statement:
     EmptyStmt
+    | ReturnStmt
     | ExpressionStmt
     | Assignment
     | ConstDecl .
 
 EmptyStmt: .
+
+ReturnStmt: 
+    "return" ExpressionList .
     
 ExpressionStmt:
     Expression .

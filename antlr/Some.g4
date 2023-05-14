@@ -7,6 +7,7 @@ KEYWORD
 	: 'fn'
 	| 'const'
 	| 'break'
+	| 'return'
 	;
 
 IDENTIFIER

@@ -27,6 +27,7 @@ const (
 	NodeSignature
 	NodeConstDecl
 	NodeAssignment
+	NodeReturnStmt
 
 	NodeSelector
 	NodeCall
@@ -71,6 +72,7 @@ var NodeConstructor = [...]func(tokenIndex, NodeIndex, NodeIndex) Node{
 	NodeSignature:    NewSignature,
 	NodeConstDecl:    NewConstDecl,
 	NodeAssignment:   NewAssignment,
+	NodeReturnStmt:   NewReturnStmt,
 
 	NodeSelector: NewSelector,
 	NodeCall:     NewCall,
@@ -109,6 +111,7 @@ var NodeString = [...]func(AST, NodeIndex) string{
 	NodeSignature:    Signature_String,
 	NodeConstDecl:    ConstDecl_String,
 	NodeAssignment:   Assignment_String,
+	NodeReturnStmt:   ReturnStmt_String,
 
 	NodeSelector: Selector_String,
 	NodeCall:     Call_String,
@@ -147,6 +150,7 @@ var NodeChildren = [...]func(AST, NodeIndex) []NodeIndex{
 	NodeSignature:    Signature_Children,
 	NodeConstDecl:    ConstDecl_Children,
 	NodeAssignment:   Assignment_Children,
+	NodeReturnStmt:   ReturnStmt_Children,
 
 	NodeSelector: Selector_Children,
 	NodeCall:     Call_Children,
@@ -402,6 +406,34 @@ func Assignment_Children(ast AST, i NodeIndex) []NodeIndex {
 
 func Assignment_String(ast AST, i NodeIndex) string {
 	return "Assign"
+}
+
+type ReturnStmt struct {
+	ExpressionList NodeIndex
+}
+
+func (ast AST) ReturnStmt(n Node) ReturnStmt {
+	return ReturnStmt{
+		ExpressionList: n.lhs,
+	}
+}
+
+func NewReturnStmt(tokenIdx tokenIndex, expressions NodeIndex, rhs NodeIndex) Node {
+	return Node{
+		tag:      NodeReturnStmt,
+		tokenIdx: tokenIdx,
+		lhs:      expressions,
+		rhs:      rhs,
+	}
+}
+
+func ReturnStmt_Children(ast AST, i NodeIndex) []NodeIndex {
+	n := ast.ReturnStmt(ast.nodes[i])
+	return []NodeIndex{n.ExpressionList}
+}
+
+func ReturnStmt_String(ast AST, i NodeIndex) string {
+	return "Return"
 }
 
 type Selector struct {

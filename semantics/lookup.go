@@ -2,76 +2,76 @@ package semantics
 
 import (
 	"fmt"
-	sx "some/syntax"
-	"some/util"
+	s "some/syntax"
+	u "some/util"
 )
 
-type decl struct {
+type lookupDecl struct {
 	name      string
 	line, col int
 	level     int
 }
 
-func (d decl) String() string {
+func (d lookupDecl) String() string {
 	return fmt.Sprintf("%s:%d:%d(%d)", d.name, d.line, d.col, d.level)
 }
 
-type environment struct {
-	seenDecls    []decl
+type lookupEnv struct {
+	seenDecls    []lookupDecl
 	prevScopeEnd int
 	curLevel     int
 }
 
-func newEnvironment() environment {
-	return environment{
-		seenDecls:    make([]decl, 0, 128),
+func newLookupEnv() lookupEnv {
+	return lookupEnv{
+		seenDecls:    make([]lookupDecl, 0, 128),
 		prevScopeEnd: 0,
 		curLevel:     -1,
 	}
 }
 
-func (e *environment) enterScope() {
+func (e *lookupEnv) enterScope() {
 	e.prevScopeEnd = len(e.seenDecls)
 	e.curLevel++
 }
 
-func (e *environment) exitScope() {
+func (e *lookupEnv) exitScope() {
 	e.seenDecls = e.seenDecls[:e.prevScopeEnd]
 	e.curLevel--
 }
 
-func (e *environment) add(d decl) {
+func (e *lookupEnv) add(d lookupDecl) {
 	e.seenDecls = append(e.seenDecls, d)
 }
 
-func (e *environment) lookup(name string) (decl, bool) {
+func (e *lookupEnv) lookup(name string) (lookupDecl, bool) {
 	for i := len(e.seenDecls) - 1; i >= 0; i-- {
 		d := e.seenDecls[i]
 		if d.name == name {
 			return d, true
 		}
 	}
-	return decl{}, false
+	return lookupDecl{}, false
 }
 
-type context struct {
-	ast *sx.AST
-	env environment
+type lookupContext struct {
+	ast *s.AST
+	env lookupEnv
 
-	funcContext sx.NodeIndex
+	funcContext s.NodeIndex
 }
 
-func LookupPass(src sx.Source, ast sx.AST, handler *util.ErrorHandler) {
-	ctx := context{
+func LookupPass(src s.Source, ast s.AST, handler *u.ErrorHandler) {
+	ctx := lookupContext{
 		ast: &ast,
-		env: newEnvironment(),
+		env: newLookupEnv(),
 	}
 
-	addIdentifier := func(src sx.Source, ast sx.AST, i sx.NodeIndex) {
+	addIdentifier := func(src s.Source, ast s.AST, i s.NodeIndex) {
 		name := ast.Identifier(ast.GetNode(i))
 		lexeme := src.Lexeme(name.Token)
 		line, col := src.Location(name.Token)
-		ctx.env.add(decl{
+		ctx.env.add(lookupDecl{
 			name:  lexeme,
 			line:  line,
 			col:   col,
@@ -79,46 +79,46 @@ func LookupPass(src sx.Source, ast sx.AST, handler *util.ErrorHandler) {
 		})
 	}
 
-	onEnter := func(ast *sx.AST, i sx.NodeIndex) (shouldStop bool) {
+	onEnter := func(ast *s.AST, i s.NodeIndex) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
-		case sx.NodeSource:
+		case s.NodeSource:
 			ctx.env.enterScope()
-		case sx.NodeFunctionDecl:
+		case s.NodeFunctionDecl:
 			node := ast.FunctionDecl(n)
 			addIdentifier(src, *ast, node.Name)
 			ctx.funcContext = i
-		case sx.NodeSignature:
+		case s.NodeSignature:
 			// skip signature, it handled in block
 			shouldStop = true
-		case sx.NodeBlock:
+		case s.NodeBlock:
 			ctx.env.enterScope()
-			if ctx.funcContext != sx.NodeIndexInvalid {
+			if ctx.funcContext != s.NodeIndexInvalid {
 				f := ast.FunctionDecl(ast.GetNode(ctx.funcContext))
-				s := ast.Signature(ast.GetNode(f.Signature))
-				params := sx.IdentifierList_Children(*ast, s.Parameters)
+				sig := ast.Signature(ast.GetNode(f.Signature))
+				params := s.IdentifierList_Children(*ast, sig.Parameters)
 				for _, i := range params {
 					addIdentifier(src, *ast, i)
 				}
-				ctx.funcContext = sx.NodeIndexInvalid
+				ctx.funcContext = s.NodeIndexInvalid
 			}
-		case sx.NodeIdentifierList:
+		case s.NodeIdentifierList:
 			node := ast.IdentifierList(n)
 			for _, i := range node.Identifiers {
 				addIdentifier(src, *ast, i)
 			}
 			shouldStop = true
-		case sx.NodeIdentifier:
+		case s.NodeIdentifier:
 			// skip function name, it handled in function decl
-			if ctx.funcContext != sx.NodeIndexInvalid {
+			if ctx.funcContext != s.NodeIndexInvalid {
 				break
 			}
-			name := sx.Identifier_String(*ast, i)
+			name := s.Identifier_String(*ast, i)
 			decl, ok := ctx.env.lookup(name)
 			if !ok {
-				handler.Add(util.NewError(
-					util.Semantic,
-					util.ES_LookupFailed,
+				handler.Add(u.NewError(
+					u.Semantic,
+					u.ES_LookupFailed,
 					decl.line,
 					decl.col,
 					src.Filename(),
@@ -128,15 +128,15 @@ func LookupPass(src sx.Source, ast sx.AST, handler *util.ErrorHandler) {
 		return
 	}
 
-	onExit := func(ast *sx.AST, i sx.NodeIndex) (shouldStop bool) {
+	onExit := func(ast *s.AST, i s.NodeIndex) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
-		case sx.NodeSource:
+		case s.NodeSource:
 			ctx.env.exitScope()
-		case sx.NodeFunctionDecl:
-			ctx.funcContext = sx.NodeIndexInvalid
+		case s.NodeFunctionDecl:
+			ctx.funcContext = s.NodeIndexInvalid
 
-		case sx.NodeBlock:
+		case s.NodeBlock:
 			ctx.env.exitScope()
 		}
 		return
