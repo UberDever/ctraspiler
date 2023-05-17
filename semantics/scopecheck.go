@@ -1,64 +1,87 @@
 package semantics
 
 import (
+	"encoding/binary"
 	"fmt"
 	s "some/syntax"
 	u "some/util"
 )
 
 type scopeIndex int
+type UniqueName []byte
 
 const scopeTop scopeIndex = -1
 
-type scopedDecl struct {
-	node      s.NodeIndex
-	parent    scopeIndex
-	line, col int
-	level     int
+type scopeDecl struct {
+	node         s.NodeIndex
+	parent       scopeIndex
+	line, col    int
+	isIdentifier bool
+	level        int
 }
 
-func (d scopedDecl) String(src *s.Source, ast *s.AST) string {
-	lexeme := src.Lexeme(ast.GetNode(d.node).Token())
-	return fmt.Sprintf("%s-%d:%d", lexeme, d.line, d.col)
+func (d scopeDecl) String(src *s.Source, ast *s.AST) string {
+	n := ast.GetNode(d.node)
+	if n.Tag() == s.NodeSource {
+		return "SRC"
+	}
+	if n.Tag() == s.NodeFunctionDecl {
+		return "FN"
+	}
+	if n.Tag() == s.NodeBlock {
+		return "BLK"
+	}
+	t := n.Token()
+	lexeme := src.Lexeme(t)
+	return fmt.Sprintf("%s[%d]", lexeme, t)
 }
 
 type scopeEnv struct {
-	ast          *s.AST
-	seenDecls    []scopedDecl
-	prevScopeEnd int
-	curLevel     int
+	ast       *s.AST
+	allDecls  []scopeDecl
+	seenDecls []scopeDecl
+	scopeBase int
+	scopeTop  int
+	curLevel  int
 }
 
 func newScopeEnv(ast *s.AST) scopeEnv {
 	return scopeEnv{
-		ast:          ast,
-		seenDecls:    make([]scopedDecl, 0, 128),
-		prevScopeEnd: 0,
-		curLevel:     -1,
+		ast:       ast,
+		allDecls:  make([]scopeDecl, 0, 4),
+		seenDecls: make([]scopeDecl, 0, 4),
+		scopeBase: 0,
+		scopeTop:  0,
+		curLevel:  -1,
 	}
 }
 
 func (e *scopeEnv) enterScope() {
-	e.prevScopeEnd = len(e.seenDecls)
+	e.scopeBase = e.scopeTop
 	e.curLevel++
 }
 
 func (e *scopeEnv) exitScope() {
-	e.seenDecls = e.seenDecls[:e.prevScopeEnd]
+	e.scopeTop = e.scopeBase
 	e.curLevel--
 }
 
-func (e *scopeEnv) add(d scopedDecl) {
-	// TODO: add shadowing avoidance and redeclaration handling
-	e.seenDecls = append(e.seenDecls, d)
+func (e *scopeEnv) add(d scopeDecl) {
+	e.allDecls = append(e.allDecls, d)
+	if e.scopeTop < len(e.seenDecls) {
+		e.seenDecls[e.scopeTop] = d
+	} else {
+		e.seenDecls = append(e.seenDecls, d)
+	}
+	e.scopeTop++
 }
 
-func (e *scopeEnv) get(i scopeIndex) scopedDecl {
-	return e.seenDecls[i]
+func (e scopeEnv) get(i scopeIndex) scopeDecl {
+	return e.allDecls[i]
 }
 
-func (e *scopeEnv) lookup(node s.NodeIndex) bool {
-	for i := len(e.seenDecls) - 1; i >= 0; i-- {
+func (e scopeEnv) lookup(node s.NodeIndex) bool {
+	for i := e.scopeTop - 1; i >= 0; i-- {
 		d := e.seenDecls[i]
 		lhs := s.Identifier_String(*e.ast, node)
 		rhs := s.Identifier_String(*e.ast, d.node)
@@ -69,90 +92,100 @@ func (e *scopeEnv) lookup(node s.NodeIndex) bool {
 	return false
 }
 
+func (e scopeEnv) uniqueName(i scopeIndex) UniqueName {
+	buffer := UniqueName{}
+	d := e.allDecls[i]
+	p := d.parent
+	for p != scopeTop {
+		buffer = binary.LittleEndian.AppendUint64(buffer, uint64(d.node))
+		buffer = binary.LittleEndian.AppendUint64(buffer, uint64(d.parent))
+		d = e.allDecls[p]
+		p = d.parent
+	}
+	return buffer
+}
+
 type scopecheckContext struct {
 	env scopeEnv
 
-	curParent    scopeIndex
-	usageContext bool
+	curParent      scopeIndex
+	inUsageContext bool
 }
 
-func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) {
+func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) (uniqueNames map[s.NodeIndex]UniqueName) {
 	ctx := scopecheckContext{
 		env:       newScopeEnv(ast),
 		curParent: scopeTop,
 	}
 
-	addDecl := func(i s.NodeIndex) scopeIndex {
+	addDecl := func(i s.NodeIndex, isIdentifier bool) scopeIndex {
 		line, col := src.Location(ast.GetNode(i).Token())
-		ctx.env.add(scopedDecl{
-			parent: ctx.curParent,
-			node:   i,
-			line:   line,
-			col:    col,
-			level:  ctx.env.curLevel,
+		ctx.env.add(scopeDecl{
+			parent:       ctx.curParent,
+			node:         i,
+			line:         line,
+			col:          col,
+			isIdentifier: isIdentifier,
+			level:        ctx.env.curLevel,
 		})
-		return scopeIndex(len(ctx.env.seenDecls) - 1)
+		return scopeIndex(len(ctx.env.allDecls) - 1)
 	}
 
-	dump := func() {
-		for i := range ctx.env.seenDecls {
-			d := ctx.env.seenDecls[i]
-			name := d.String(src, ast)
+	dump := func(decls []scopeDecl, delimiter string) {
+		for i := range decls {
+			d := decls[i]
 			p := d.parent
+			name := ""
 			for p != scopeTop {
-				d := ctx.env.seenDecls[p]
-				name = d.String(src, ast) + "/" + name
+				name = "." + d.String(src, ast) + fmt.Sprintf("(%d)", p) + name
+				d = decls[p]
 				p = d.parent
 			}
-			fmt.Printf("%s ", name)
+			name = "src" + name
+			fmt.Printf("%d: %s%s", i, name, delimiter)
 		}
 		fmt.Println("")
 	}
 
-	// shouldStop used here to stop processing declarations
-	// and let `case NodeIdentifier` process all usages
 	onEnter := func(ast *s.AST, i s.NodeIndex) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
 		case s.NodeSource:
-			dump()
-			ctx.curParent = addDecl(i)
 			ctx.env.enterScope()
-			dump()
+			ctx.curParent = addDecl(i, false)
+			dump(ctx.env.allDecls, " | ")
 
 		case s.NodeFunctionDecl:
-			dump()
-			ctx.curParent = addDecl(i)
 			ctx.env.enterScope()
-			dump()
+			ctx.curParent = addDecl(i, false)
+			dump(ctx.env.allDecls, " | ")
 
 		case s.NodeBlock:
-			dump()
-			ctx.curParent = addDecl(i)
 			ctx.env.enterScope()
-			dump()
+			ctx.curParent = addDecl(i, false)
+			dump(ctx.env.allDecls, " | ")
 
 		case s.NodeExpression:
-			ctx.usageContext = true
+			ctx.inUsageContext = true
 
 		case s.NodeIdentifier:
-			if ctx.usageContext {
-
+			if ctx.inUsageContext {
+				seen := ctx.env.lookup(i)
+				if !seen {
+					id := ast.Identifier(ast.GetNode(i)).Token
+					name := src.Lexeme(id)
+					line, col := src.Location(id)
+					handler.Add(u.NewError(
+						u.Semantic,
+						u.ES_ScopecheckFailed,
+						line,
+						col,
+						src.Filename(),
+						name))
+				}
 			} else {
-				addDecl(i)
+				addDecl(i, true)
 			}
-			// id := ast.Identifier(ast.GetNode(i))
-			// decl, ok := ctx.env.lookup(id.Token)
-			// if !ok {
-			// 	name := s.Identifier_String(*ast, i)
-			// 	handler.Add(u.NewError(
-			// 		u.Semantic,
-			// 		u.ES_ScopecheckFailed,
-			// 		decl.line,
-			// 		decl.col,
-			// 		src.Filename(),
-			// 		name))
-			// }
 		}
 		return
 	}
@@ -161,27 +194,32 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
 		case s.NodeSource:
-			dump()
+			dump(ctx.env.allDecls, " | ")
 			ctx.env.exitScope()
-			dump()
 
 		case s.NodeFunctionDecl:
-			dump()
-			ctx.env.exitScope()
+			dump(ctx.env.allDecls, " | ")
 			ctx.curParent = ctx.env.get(ctx.curParent).parent
-			dump()
+			ctx.env.exitScope()
 
 		case s.NodeBlock:
-			dump()
-			ctx.env.exitScope()
+			dump(ctx.env.allDecls, " | ")
 			ctx.curParent = ctx.env.get(ctx.curParent).parent
-			dump()
+			ctx.env.exitScope()
 
 		case s.NodeExpression:
-			ctx.usageContext = false
+			ctx.inUsageContext = false
 		}
 		return
 	}
 
 	ast.Traverse(onEnter, onExit)
+
+	uniqueNames = make(map[s.NodeIndex]UniqueName)
+	for i, d := range ctx.env.allDecls {
+		if d.isIdentifier {
+			uniqueNames[d.node] = ctx.env.uniqueName(scopeIndex(i))
+		}
+	}
+	return uniqueNames
 }

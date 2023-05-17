@@ -24,6 +24,7 @@ Block:
 Statement:
     EmptyStmt
     | ReturnStmt
+    | Block
     | ExpressionStmt
     | Assignment
     | ConstDecl .

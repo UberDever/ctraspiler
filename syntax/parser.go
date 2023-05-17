@@ -312,6 +312,8 @@ func (p *parser) parseStatement() NodeIndex {
 		return p.parseConstDecl()
 	} else if p.matchToken(TokenKeyword, "return") {
 		return p.parseReturnStmt()
+	} else if p.matchToken(TokenPunctuation, "{") {
+		return p.parseBlock()
 	} else {
 		// NOTE: need to rollback here, because I don't bother
 		// to find all terminals that start an expression
