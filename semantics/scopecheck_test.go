@@ -60,9 +60,10 @@ func TestScopecheckDeclarations(t *testing.T) {
 	tokenizer.Tokenize(&src)
 	parser := s.NewParser(&handler)
 	ast := parser.Parse(&src)
-	uniqueNames := ScopecheckPass(&src, &ast, &handler)
+	result := ScopecheckPass(&src, &ast, &handler)
+
 	namesSet := map[string]any{}
-	for i, n := range uniqueNames {
+	for i, n := range result.UniqueNames {
 		name := string(n)
 		if _, has := namesSet[name]; has {
 			t.Fatalf("Key at node = %d have been already encountered", i)

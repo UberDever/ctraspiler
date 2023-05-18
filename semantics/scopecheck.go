@@ -112,7 +112,12 @@ type scopecheckContext struct {
 	inUsageContext bool
 }
 
-func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) (uniqueNames map[s.NodeIndex]UniqueName) {
+type ScopeCheckResult struct {
+	Ast         *s.AST
+	UniqueNames map[s.NodeIndex]UniqueName
+}
+
+func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeCheckResult {
 	ctx := scopecheckContext{
 		env:       newScopeEnv(ast),
 		curParent: scopeTop,
@@ -215,11 +220,14 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) (uniqueN
 
 	ast.Traverse(onEnter, onExit)
 
-	uniqueNames = make(map[s.NodeIndex]UniqueName)
+	uniqueNames := make(map[s.NodeIndex]UniqueName)
 	for i, d := range ctx.env.allDecls {
 		if d.isIdentifier {
 			uniqueNames[d.node] = ctx.env.uniqueName(scopeIndex(i))
 		}
 	}
-	return uniqueNames
+	return ScopeCheckResult{
+		Ast:         ast,
+		UniqueNames: uniqueNames,
+	}
 }

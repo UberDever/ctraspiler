@@ -29,13 +29,13 @@ func runTypecheck(code string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	ScopecheckPass(&src, &ast, &handler)
+	scopeCheck := ScopecheckPass(&src, &ast, &handler)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	TypeCheckPass(&src, &ast, &handler)
+	TypeCheckPass(scopeCheck, &src, &ast, &handler)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
