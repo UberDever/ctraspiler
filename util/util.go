@@ -33,6 +33,10 @@ func (s *DisjointSet) MakeSet(x uint) {
 }
 
 func (s *DisjointSet) Find(x uint) uint {
+	_, ok := s.parent[x]
+	if !ok {
+		s.MakeSet(x)
+	}
 	if s.parent[x] != x {
 		s.parent[x] = s.Find(s.parent[x])
 	}
