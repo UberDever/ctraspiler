@@ -9,10 +9,10 @@ import (
 )
 
 type TokenTag int
-type TokenIndex int
+type TokenID int
 
 const (
-	tokenIndexInvalid TokenIndex = math.MinInt
+	tokenIDInvalid TokenID = math.MinInt
 )
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution
@@ -90,7 +90,7 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 
 	if len(s.tokens) > 0 {
 		i := len(s.tokens) - 1
-		last := s.token(TokenIndex(i))
+		last := s.token(TokenID(i))
 
 		switch last.tag {
 		case TokenIdentifier:
@@ -107,7 +107,7 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 			s.tokens = append(s.tokens, semicolon)
 
 		case TokenKeyword:
-			lexeme := s.Lexeme(TokenIndex(i))
+			lexeme := s.Lexeme(TokenID(i))
 			if lexeme == "break" ||
 				lexeme == "continue" ||
 				lexeme == "fallthrough" ||
@@ -116,7 +116,7 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 
 			}
 		case TokenPunctuation:
-			lexeme := s.Lexeme(TokenIndex(i))
+			lexeme := s.Lexeme(TokenID(i))
 			if lexeme == "++" ||
 				lexeme == "--" ||
 				lexeme == ")" ||

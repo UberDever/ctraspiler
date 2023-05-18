@@ -7,14 +7,14 @@ import (
 	u "some/util"
 )
 
-type scopeIndex int
+type scopeID int
 type UniqueName []byte
 
-const scopeTop scopeIndex = -1
+const scopeTop scopeID = -1
 
 type scopeDecl struct {
-	node         s.NodeIndex
-	parent       scopeIndex
+	node         s.NodeID
+	parent       scopeID
 	line, col    int
 	isIdentifier bool
 	level        int
@@ -76,11 +76,11 @@ func (e *scopeEnv) add(d scopeDecl) {
 	e.scopeTop++
 }
 
-func (e scopeEnv) get(i scopeIndex) scopeDecl {
+func (e scopeEnv) get(i scopeID) scopeDecl {
 	return e.allDecls[i]
 }
 
-func (e scopeEnv) lookup(node s.NodeIndex) bool {
+func (e scopeEnv) lookup(node s.NodeID) bool {
 	for i := e.scopeTop - 1; i >= 0; i-- {
 		d := e.seenDecls[i]
 		lhs := s.Identifier_String(*e.ast, node)
@@ -92,7 +92,7 @@ func (e scopeEnv) lookup(node s.NodeIndex) bool {
 	return false
 }
 
-func (e scopeEnv) uniqueName(i scopeIndex) UniqueName {
+func (e scopeEnv) uniqueName(i scopeID) UniqueName {
 	buffer := UniqueName{}
 	d := e.allDecls[i]
 	p := d.parent
@@ -108,13 +108,13 @@ func (e scopeEnv) uniqueName(i scopeIndex) UniqueName {
 type scopecheckContext struct {
 	env scopeEnv
 
-	curParent      scopeIndex
+	curParent      scopeID
 	inUsageContext bool
 }
 
 type ScopeCheckResult struct {
 	Ast         *s.AST
-	UniqueNames map[s.NodeIndex]UniqueName
+	UniqueNames map[s.NodeID]UniqueName
 }
 
 func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeCheckResult {
@@ -123,7 +123,7 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 		curParent: scopeTop,
 	}
 
-	addDecl := func(i s.NodeIndex, isIdentifier bool) scopeIndex {
+	addDecl := func(i s.NodeID, isIdentifier bool) scopeID {
 		line, col := src.Location(ast.GetNode(i).Token())
 		ctx.env.add(scopeDecl{
 			parent:       ctx.curParent,
@@ -133,7 +133,7 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 			isIdentifier: isIdentifier,
 			level:        ctx.env.curLevel,
 		})
-		return scopeIndex(len(ctx.env.allDecls) - 1)
+		return scopeID(len(ctx.env.allDecls) - 1)
 	}
 
 	dump := func(decls []scopeDecl, delimiter string) {
@@ -152,7 +152,7 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 		fmt.Println("")
 	}
 
-	onEnter := func(ast *s.AST, i s.NodeIndex) (shouldStop bool) {
+	onEnter := func(ast *s.AST, i s.NodeID) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
 		case s.NodeSource:
@@ -195,7 +195,7 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 		return
 	}
 
-	onExit := func(ast *s.AST, i s.NodeIndex) (shouldStop bool) {
+	onExit := func(ast *s.AST, i s.NodeID) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
 		case s.NodeSource:
@@ -220,10 +220,10 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 
 	ast.Traverse(onEnter, onExit)
 
-	uniqueNames := make(map[s.NodeIndex]UniqueName)
+	uniqueNames := make(map[s.NodeID]UniqueName)
 	for i, d := range ctx.env.allDecls {
 		if d.isIdentifier {
-			uniqueNames[d.node] = ctx.env.uniqueName(scopeIndex(i))
+			uniqueNames[d.node] = ctx.env.uniqueName(scopeID(i))
 		}
 	}
 	return ScopeCheckResult{

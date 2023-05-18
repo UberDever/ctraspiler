@@ -13,9 +13,9 @@ import (
 
 func isASTValid(nodes []Node) (Node, int, bool) {
 	for i, n := range nodes {
-		if n.tokenIdx == tokenIndexInvalid ||
-			n.lhs == NodeIndexInvalid ||
-			n.rhs == NodeIndexInvalid {
+		if n.tokenIdx == tokenIDInvalid ||
+			n.lhs == NodeIDInvalid ||
+			n.rhs == NodeIDInvalid {
 			return n, i, false
 		}
 	}

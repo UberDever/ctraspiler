@@ -141,16 +141,6 @@ func TestTokenizerProgram(t *testing.T) {
 	}
 	tokens = tokens[:len(tokens)-1]
 
-	// for i := range tokens {
-	// 	t := tokens[i]
-	// 	if t.tag == TokenTerminator {
-	// 		fmt.Print(";")
-	// 	} else {
-	// 		fmt.Print(src.Lexeme(tokenIndex(i)))
-	// 	}
-	// 	fmt.Print(" ")
-	// }
-
 	if len(tokens) != len(expected) {
 		t.Errorf("Same tokens arrays expected, got tokens=%d and expected=%d", len(tokens), len(expected))
 	}
