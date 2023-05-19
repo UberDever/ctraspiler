@@ -45,6 +45,8 @@ func runTypecheck(code string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
+	fmt.Println(u.FormatSExpr(tAst.Dump()))
+
 	return nil
 }
 

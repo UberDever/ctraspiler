@@ -123,12 +123,12 @@ func (r typeRepo) getString(id TypeID) (s string) {
 		if r.isProperType(id) {
 			switch t.lhs {
 			case TypeIDInt:
-				return "int "
+				return "int"
 			default:
 				panic("this switch should be exaustive")
 			}
 		} else {
-			return "V "
+			return "V"
 		}
 	}
 
@@ -147,7 +147,7 @@ func (r typeRepo) getString(id TypeID) (s string) {
 				break
 			}
 			sub := r.getString(subtypes.next())
-			s += sub
+			s += sub + " "
 		}
 		s += ")"
 	default:
@@ -310,6 +310,13 @@ func (ast *TypedAST) Dump() string {
 	onEnter := func(_ *a.AST, i a.NodeID) (stopTraversal bool) {
 		str.WriteByte('(')
 		str.WriteString(ast.GetNodeString(i))
+
+		t, ok := ast.nodeTypes[i]
+		if ok {
+			str.WriteByte('{')
+			str.WriteString(ast.repo.getString(t))
+			str.WriteByte('}')
+		}
 
 		// filter nodes that are composite by themselves
 		n := ast.AST.GetNode(i)
