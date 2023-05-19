@@ -1,5 +1,7 @@
 package util
 
+import "strings"
+
 // I love golang for this stuff
 func Min(x, y int) int {
 	if x < y {
@@ -59,4 +61,55 @@ func (s *DisjointSet) Union(a, b uint) {
 		s.parent[x] = y
 		s.rank[y] += 1
 	}
+}
+
+func FormatSExpr(sexpr string) string {
+	formatted := strings.Builder{}
+	depth := -1
+	for i := range sexpr {
+		if sexpr[i] == '(' {
+			depth++
+			formatted.WriteByte('\n')
+			for j := 0; j < depth; j++ {
+				formatted.WriteString("    ")
+			}
+			formatted.WriteByte('(')
+		} else if sexpr[i] == ')' {
+			depth--
+			formatted.WriteByte(')')
+		} else {
+			formatted.WriteByte(sexpr[i])
+		}
+	}
+	return formatted.String()
+}
+
+func MinifySExpr(s string) string {
+	formatted := strings.Builder{}
+	skipWS := func(i int) (int, bool) {
+		wasSpace := false
+		for s[i] == ' ' || s[i] == '\n' || s[i] == '\t' {
+			wasSpace = true
+			i++
+			if i >= len(s) {
+				break
+			}
+		}
+		return i, wasSpace
+	}
+
+	for i := 0; i < len(s); i++ {
+		j, wasSpace := skipWS(i)
+		if j >= len(s) {
+			break
+		}
+		i = j
+		if wasSpace {
+			if s[i] != '(' && s[i] != ')' {
+				formatted.WriteByte(' ')
+			}
+		}
+		formatted.WriteByte(s[i])
+	}
+	return formatted.String()
 }

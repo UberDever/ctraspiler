@@ -1,8 +1,5 @@
 Constraints
 
-NodeIntLiteral {token}: [node] = int
-NodeBinaryPlus {lhs rhs}: [node] = [lhs] = [rhs]
-
-var a,b
-b = 5
-a = b + 3
+NodeIntLiteral {token}: [node] = int; push [node]
+NodeIdentifier {token}: [node]; push [node]
+NodeBinaryPlus {lhs rhs}: pop [lhs]; pop [rhs]; [node] = [lhs] = [rhs]

@@ -3,6 +3,7 @@ package semantics
 import (
 	"encoding/binary"
 	"fmt"
+	a "some/ast"
 	s "some/syntax"
 	u "some/util"
 )
@@ -13,22 +14,22 @@ type UniqueName []byte
 const scopeTop scopeID = -1
 
 type scopeDecl struct {
-	node         s.NodeID
+	node         a.NodeID
 	parent       scopeID
 	line, col    int
 	isIdentifier bool
 	level        int
 }
 
-func (d scopeDecl) String(src *s.Source, ast *s.AST) string {
+func (d scopeDecl) String(src *s.Source, ast *a.AST) string {
 	n := ast.GetNode(d.node)
-	if n.Tag() == s.NodeSource {
+	if n.Tag() == a.NodeSource {
 		return "SRC"
 	}
-	if n.Tag() == s.NodeFunctionDecl {
+	if n.Tag() == a.NodeFunctionDecl {
 		return "FN"
 	}
-	if n.Tag() == s.NodeBlock {
+	if n.Tag() == a.NodeBlock {
 		return "BLK"
 	}
 	t := n.Token()
@@ -37,7 +38,7 @@ func (d scopeDecl) String(src *s.Source, ast *s.AST) string {
 }
 
 type scopeEnv struct {
-	ast       *s.AST
+	ast       *a.AST
 	allDecls  []scopeDecl
 	seenDecls []scopeDecl
 	scopeBase int
@@ -45,7 +46,7 @@ type scopeEnv struct {
 	curLevel  int
 }
 
-func newScopeEnv(ast *s.AST) scopeEnv {
+func newScopeEnv(ast *a.AST) scopeEnv {
 	return scopeEnv{
 		ast:       ast,
 		allDecls:  make([]scopeDecl, 0, 4),
@@ -80,11 +81,11 @@ func (e scopeEnv) get(i scopeID) scopeDecl {
 	return e.allDecls[i]
 }
 
-func (e scopeEnv) lookup(node s.NodeID) bool {
+func (e scopeEnv) lookup(node a.NodeID) bool {
 	for i := e.scopeTop - 1; i >= 0; i-- {
 		d := e.seenDecls[i]
-		lhs := s.Identifier_String(*e.ast, node)
-		rhs := s.Identifier_String(*e.ast, d.node)
+		lhs := a.Identifier_String(*e.ast, node)
+		rhs := a.Identifier_String(*e.ast, d.node)
 		if lhs == rhs {
 			return true
 		}
@@ -113,17 +114,17 @@ type scopecheckContext struct {
 }
 
 type ScopeCheckResult struct {
-	Ast         *s.AST
-	UniqueNames map[s.NodeID]UniqueName
+	Ast         *a.AST
+	UniqueNames map[a.NodeID]UniqueName
 }
 
-func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeCheckResult {
+func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeCheckResult {
 	ctx := scopecheckContext{
 		env:       newScopeEnv(ast),
 		curParent: scopeTop,
 	}
 
-	addDecl := func(i s.NodeID, isIdentifier bool) scopeID {
+	addDecl := func(i a.NodeID, isIdentifier bool) scopeID {
 		line, col := src.Location(ast.GetNode(i).Token())
 		ctx.env.add(scopeDecl{
 			parent:       ctx.curParent,
@@ -152,28 +153,28 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 		fmt.Println("")
 	}
 
-	onEnter := func(ast *s.AST, i s.NodeID) (shouldStop bool) {
+	onEnter := func(ast *a.AST, i a.NodeID) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
-		case s.NodeSource:
+		case a.NodeSource:
 			ctx.env.enterScope()
 			ctx.curParent = addDecl(i, false)
 			dump(ctx.env.allDecls, " | ")
 
-		case s.NodeFunctionDecl:
+		case a.NodeFunctionDecl:
 			ctx.env.enterScope()
 			ctx.curParent = addDecl(i, false)
 			dump(ctx.env.allDecls, " | ")
 
-		case s.NodeBlock:
+		case a.NodeBlock:
 			ctx.env.enterScope()
 			ctx.curParent = addDecl(i, false)
 			dump(ctx.env.allDecls, " | ")
 
-		case s.NodeExpression:
+		case a.NodeExpression:
 			ctx.inUsageContext = true
 
-		case s.NodeIdentifier:
+		case a.NodeIdentifier:
 			if ctx.inUsageContext {
 				seen := ctx.env.lookup(i)
 				if !seen {
@@ -195,32 +196,32 @@ func ScopecheckPass(src *s.Source, ast *s.AST, handler *u.ErrorHandler) ScopeChe
 		return
 	}
 
-	onExit := func(ast *s.AST, i s.NodeID) (shouldStop bool) {
+	onExit := func(ast *a.AST, i a.NodeID) (shouldStop bool) {
 		n := ast.GetNode(i)
 		switch n.Tag() {
-		case s.NodeSource:
+		case a.NodeSource:
 			dump(ctx.env.allDecls, " | ")
 			ctx.env.exitScope()
 
-		case s.NodeFunctionDecl:
-			dump(ctx.env.allDecls, " | ")
-			ctx.curParent = ctx.env.get(ctx.curParent).parent
-			ctx.env.exitScope()
-
-		case s.NodeBlock:
+		case a.NodeFunctionDecl:
 			dump(ctx.env.allDecls, " | ")
 			ctx.curParent = ctx.env.get(ctx.curParent).parent
 			ctx.env.exitScope()
 
-		case s.NodeExpression:
+		case a.NodeBlock:
+			dump(ctx.env.allDecls, " | ")
+			ctx.curParent = ctx.env.get(ctx.curParent).parent
+			ctx.env.exitScope()
+
+		case a.NodeExpression:
 			ctx.inUsageContext = false
 		}
 		return
 	}
 
-	ast.Traverse(onEnter, onExit)
+	ast.TraversePreorder(onEnter, onExit)
 
-	uniqueNames := make(map[s.NodeID]UniqueName)
+	uniqueNames := make(map[a.NodeID]UniqueName)
 	for i, d := range ctx.env.allDecls {
 		if d.isIdentifier {
 			uniqueNames[d.node] = ctx.env.uniqueName(scopeID(i))

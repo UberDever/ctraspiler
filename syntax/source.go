@@ -17,26 +17,26 @@ func NewSource(filename string, text utf8string.String) Source {
 }
 
 func (s Source) Location(id TokenID) (line, col int) {
-	t := s.token(id)
-	line = t.line
-	col = t.col
+	t := s.Token(id)
+	line = t.Line
+	col = t.Col
 	return
 }
 
 func (s Source) Lexeme(id TokenID) string {
-	t := s.token(id)
-	return s.text.Slice(int(t.start), int(t.end+1))
+	t := s.Token(id)
+	return s.text.Slice(int(t.Start), int(t.End+1))
 }
 
 func (s Source) Filename() string {
 	return s.filename
 }
 
-func (s Source) token(id TokenID) token {
+func (s Source) Token(id TokenID) token {
 	return s.tokens[id]
 }
 
-func (s Source) traceToken(tag TokenTag, lexeme string, line int, col int) string {
+func (s Source) TraceToken(tag TokenTag, lexeme string, line int, col int) string {
 	str := fmt.Sprintf("\ttag = %d\n", tag)
 	if lexeme != "" {
 		str += fmt.Sprintf("\tlexeme = %#v\n", lexeme)

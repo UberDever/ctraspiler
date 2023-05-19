@@ -2,8 +2,10 @@ package semantics
 
 import (
 	"errors"
-	sx "some/syntax"
-	"some/util"
+	"fmt"
+	a "some/ast"
+	s "some/syntax"
+	u "some/util"
 	"strings"
 	"testing"
 
@@ -12,22 +14,23 @@ import (
 
 func runTypecheck(code string) error {
 	text := utf8string.NewString(code)
-	src := sx.NewSource("typing_test", *text)
+	src := s.NewSource("typing_test", *text)
 
-	handler := util.NewHandler()
-	tokenizer := sx.NewTokenizer(&handler)
+	handler := u.NewHandler()
+	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	parser := sx.NewParser(&handler)
+	parser := a.NewParser(&handler)
 	ast := parser.Parse(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
+	fmt.Println(u.FormatSExpr(ast.Dump()))
 
 	scopeCheck := ScopecheckPass(&src, &ast, &handler)
 	if !handler.Empty() {
@@ -35,7 +38,8 @@ func runTypecheck(code string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	TypeCheckPass(scopeCheck, &src, &ast, &handler)
+	tAst := TypeCheckPass(scopeCheck, &src, &ast, &handler)
+	_ = tAst
 	if !handler.Empty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
@@ -46,12 +50,8 @@ func runTypecheck(code string) error {
 
 func TestSimpleTypecheck(t *testing.T) {
 	code := `
-		fn some(a, b) {
-			return a * b
-		}
-
 		fn main() {
-			const c = some(2, 3)
+			const a = 5 + 2
 		}
 	`
 	if e := runTypecheck(code); e != nil {

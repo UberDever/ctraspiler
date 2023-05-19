@@ -58,7 +58,7 @@ func TestTokenizerTokens(t *testing.T) {
 		t.Error(strings.Join(errs, " "))
 	}
 
-	if tokens[len(tokens)-1].tag != TokenEOF {
+	if tokens[len(tokens)-1].Tag != TokenEOF {
 		t.Errorf("Missed EOF at the end of token stream")
 	}
 	tokens = tokens[:len(tokens)-1]
@@ -81,12 +81,12 @@ func TestTokenizerTokens(t *testing.T) {
 	for i := 0; i < tokensLen; i++ {
 		lhs := tokens[i]
 		rhs := expected[i]
-		asStr := text.Slice(int(lhs.start), int(lhs.end)+1)
+		asStr := text.Slice(int(lhs.Start), int(lhs.End)+1)
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.tag != rhs.TokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.TokenTag)
+		if lhs.Tag != rhs.TokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.Tag, rhs.TokenTag)
 		}
 	}
 }
@@ -136,7 +136,7 @@ func TestTokenizerProgram(t *testing.T) {
 		t.Error(strings.Join(errs, " "))
 	}
 
-	if tokens[len(tokens)-1].tag != TokenEOF {
+	if tokens[len(tokens)-1].Tag != TokenEOF {
 		t.Errorf("Missed EOF at the end of token stream")
 	}
 	tokens = tokens[:len(tokens)-1]
@@ -149,12 +149,12 @@ func TestTokenizerProgram(t *testing.T) {
 	for i := 0; i < tokensLen; i++ {
 		lhs := tokens[i]
 		rhs := expected[i]
-		asStr := text.Slice(int(lhs.start), int(lhs.end)+1)
+		asStr := text.Slice(int(lhs.Start), int(lhs.End)+1)
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.tag != rhs.TokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.tag, rhs.TokenTag)
+		if lhs.Tag != rhs.TokenTag {
+			t.Errorf("[%d] Types %d != %d", i, lhs.Tag, rhs.TokenTag)
 		}
 	}
 }

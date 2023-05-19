@@ -1,8 +1,9 @@
-package syntax
+package ast
 
 import (
 	"errors"
 	"fmt"
+	s "some/syntax"
 	u "some/util"
 	"strings"
 	"testing"
@@ -13,7 +14,7 @@ import (
 
 func isASTValid(nodes []Node) (Node, int, bool) {
 	for i, n := range nodes {
-		if n.tokenIdx == tokenIDInvalid ||
+		if n.tokenIdx == s.TokenIDInvalid ||
 			n.lhs == NodeIDInvalid ||
 			n.rhs == NodeIDInvalid {
 			return n, i, false
@@ -49,10 +50,10 @@ func concatVertically(lhs, rhs string) string {
 
 func runTest(lhs string, rhs string) error {
 	text := utf8string.NewString(lhs)
-	src := NewSource("ast_test", *text)
+	src := s.NewSource("ast_test", *text)
 
 	handler := u.NewHandler()
-	tokenizer := NewTokenizer(&handler)
+	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
@@ -66,15 +67,15 @@ func runTest(lhs string, rhs string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	expected := unformatSExpr(utf8string.NewString(rhs).String())
-	result := ast.Dump(false)
+	expected := u.MinifySExpr(utf8string.NewString(rhs).String())
+	result := ast.Dump()
 
 	if node, index, ok := isASTValid(ast.nodes); !ok {
 		return fmt.Errorf("AST nodes failed on validity test at %d => %v", index, node)
 	}
 	if result != expected {
-		lhs = formatSExpr(result)
-		rhs = formatSExpr(expected)
+		lhs = u.FormatSExpr(result)
+		rhs = u.FormatSExpr(expected)
 		trace := concatVertically(lhs, rhs)
 		return fmt.Errorf("AST are not equal\n%s", trace)
 	}
@@ -198,10 +199,10 @@ func TestSExprFormatting(t *testing.T) {
 		fn main()
 		fn some(a, b) // some function
 	`)
-	src := NewSource("ast_test", *text)
+	src := s.NewSource("ast_test", *text)
 
 	handler := u.NewHandler()
-	tokenizer := NewTokenizer(&handler)
+	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
@@ -214,9 +215,9 @@ func TestSExprFormatting(t *testing.T) {
 		errs := handler.AllErrors()
 		t.Error(strings.Join(errs, " "))
 	}
-	dump := ast.Dump(false)
-	formatted := formatSExpr(dump)
-	unformatted := unformatSExpr(formatted)
+	dump := ast.Dump()
+	formatted := u.FormatSExpr(dump)
+	unformatted := u.MinifySExpr(formatted)
 	if dump != unformatted {
 		t.Errorf("SExpr are not equal {%#v} {%#v}", dump, unformatted)
 	}

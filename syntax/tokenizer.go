@@ -12,7 +12,7 @@ type TokenTag int
 type TokenID int
 
 const (
-	tokenIDInvalid TokenID = math.MinInt
+	TokenIDInvalid TokenID = math.MinInt
 )
 
 // NOTE: This was a bad idea - full mapping of tokens is better solution
@@ -37,11 +37,11 @@ const (
 )
 
 type token struct {
-	tag   TokenTag
-	start int
-	end   int
-	line  int
-	col   int
+	Tag   TokenTag
+	Start int
+	End   int
+	Line  int
+	Col   int
 }
 
 type tokenizer struct {
@@ -69,11 +69,11 @@ func (tok *tokenizer) Tokenize(src *Source) {
 			continue
 		}
 		src.tokens = append(src.tokens, token{
-			tag:   TokenTag(t.GetTokenType()),
-			start: t.GetStart(),
-			end:   t.GetStop(),
-			line:  t.GetLine(),
-			col:   t.GetColumn(),
+			Tag:   TokenTag(t.GetTokenType()),
+			Start: t.GetStart(),
+			End:   t.GetStop(),
+			Line:  t.GetLine(),
+			Col:   t.GetColumn(),
 		})
 	}
 	src.tokens = append(src.tokens, token{TokenEOF, -1, -1, -1, -1})
@@ -81,18 +81,18 @@ func (tok *tokenizer) Tokenize(src *Source) {
 
 func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []token {
 	semicolon := token{
-		tag:   TokenTerminator,
-		start: terminator.GetStart(),
-		end:   terminator.GetStop(),
-		line:  terminator.GetLine(),
-		col:   terminator.GetColumn(),
+		Tag:   TokenTerminator,
+		Start: terminator.GetStart(),
+		End:   terminator.GetStop(),
+		Line:  terminator.GetLine(),
+		Col:   terminator.GetColumn(),
 	}
 
 	if len(s.tokens) > 0 {
 		i := len(s.tokens) - 1
-		last := s.token(TokenID(i))
+		last := s.Token(TokenID(i))
 
-		switch last.tag {
+		switch last.Tag {
 		case TokenIdentifier:
 			fallthrough
 		case TokenIntLit:

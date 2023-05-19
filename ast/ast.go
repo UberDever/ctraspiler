@@ -1,8 +1,9 @@
-package syntax
+package ast
 
 import (
 	"fmt"
 	"math"
+	s "some/syntax"
 	"strings"
 )
 
@@ -13,10 +14,6 @@ type NodeAction = func(*AST, NodeID) bool
 const (
 	NodeIDInvalid   NodeID = math.MinInt
 	NodeIDUndefined        = -1
-)
-
-const (
-	nodeUndefined = -1
 )
 
 const (
@@ -65,7 +62,7 @@ const (
 // time introspection / macro system. But the latter assumes AST transformation,
 // what is not the point here - we just want to fill the maps with handlers, that
 // named specifically, that's all
-var NodeConstructor = [...]func(TokenID, NodeID, NodeID) Node{
+var NodeConstructor = [...]func(s.TokenID, NodeID, NodeID) Node{
 	NodeSource: NewSourceRoot,
 	NodeBlock:  NewBlock,
 
@@ -210,12 +207,12 @@ func init() {
 
 type Node struct {
 	tag      NodeTag
-	tokenIdx TokenID
+	tokenIdx s.TokenID
 	lhs, rhs NodeID
 }
 
-func (n Node) Tag() NodeTag   { return n.tag }
-func (n Node) Token() TokenID { return n.tokenIdx }
+func (n Node) Tag() NodeTag     { return n.tag }
+func (n Node) Token() s.TokenID { return n.tokenIdx }
 
 // General pattern of typed nodes:
 // Full and interpreted struct data (typed node)
@@ -240,7 +237,7 @@ func (ast AST) SourceRoot(n Node) SourceRoot {
 	}
 }
 
-func NewSourceRoot(rootToken TokenID, start NodeID, end NodeID) Node {
+func NewSourceRoot(rootToken s.TokenID, start NodeID, end NodeID) Node {
 	return Node{
 		tag:      NodeSource,
 		tokenIdx: rootToken,
@@ -274,7 +271,7 @@ func (ast AST) FunctionDecl(n Node) FunctionDecl {
 	return node
 }
 
-func NewFunctionDecl(tokenIdx TokenID, signature NodeID, body NodeID) Node {
+func NewFunctionDecl(tokenIdx s.TokenID, signature NodeID, body NodeID) Node {
 	return Node{
 		tag:      NodeFunctionDecl,
 		tokenIdx: tokenIdx,
@@ -302,7 +299,7 @@ func (ast AST) Signature(n Node) Signature {
 	}
 }
 
-func NewSignature(tokenIdx TokenID, parameters NodeID, rhs NodeID) Node {
+func NewSignature(tokenIdx s.TokenID, parameters NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeSignature,
 		tokenIdx: tokenIdx,
@@ -335,7 +332,7 @@ func (ast AST) Block(n Node) Block {
 	}
 }
 
-func NewBlock(tokenIdx TokenID, start NodeID, end NodeID) Node {
+func NewBlock(tokenIdx s.TokenID, start NodeID, end NodeID) Node {
 	return Node{
 		tag:      NodeBlock,
 		tokenIdx: tokenIdx,
@@ -365,7 +362,7 @@ func (ast AST) ConstDecl(n Node) ConstDecl {
 	}
 }
 
-func NewConstDecl(tokenIdx TokenID, identifierList NodeID, expressionList NodeID) Node {
+func NewConstDecl(tokenIdx s.TokenID, identifierList NodeID, expressionList NodeID) Node {
 	return Node{
 		tag:      NodeConstDecl,
 		tokenIdx: tokenIdx,
@@ -395,7 +392,7 @@ func (ast AST) Assignment(n Node) Assignment {
 	}
 }
 
-func NewAssignment(tokenIdx TokenID, exprList1 NodeID, exprList2 NodeID) Node {
+func NewAssignment(tokenIdx s.TokenID, exprList1 NodeID, exprList2 NodeID) Node {
 	return Node{
 		tag:      NodeAssignment,
 		tokenIdx: tokenIdx,
@@ -423,7 +420,7 @@ func (ast AST) ReturnStmt(n Node) ReturnStmt {
 	}
 }
 
-func NewReturnStmt(tokenIdx TokenID, expressions NodeID, rhs NodeID) Node {
+func NewReturnStmt(tokenIdx s.TokenID, expressions NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeReturnStmt,
 		tokenIdx: tokenIdx,
@@ -451,7 +448,7 @@ func (ast AST) Expression(n Node) Expression {
 	}
 }
 
-func NewExpression(tokenIdx TokenID, expr NodeID, rhs NodeID) Node {
+func NewExpression(tokenIdx s.TokenID, expr NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeExpression,
 		tokenIdx: tokenIdx,
@@ -481,7 +478,7 @@ func (ast AST) Selector(n Node) Selector {
 	}
 }
 
-func NewSelector(tokenIdx TokenID, expr NodeID, identifier NodeID) Node {
+func NewSelector(tokenIdx s.TokenID, expr NodeID, identifier NodeID) Node {
 	return Node{
 		tag:      NodeSelector,
 		tokenIdx: tokenIdx,
@@ -511,7 +508,7 @@ func (ast AST) Call(n Node) Call {
 	}
 }
 
-func NewCall(tokenIdx TokenID, expr NodeID, args NodeID) Node {
+func NewCall(tokenIdx s.TokenID, expr NodeID, args NodeID) Node {
 	return Node{
 		tag:      NodeCall,
 		tokenIdx: tokenIdx,
@@ -542,7 +539,7 @@ func (ast AST) Or(n Node) Or {
 	}
 }
 
-func NewOr(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewOr(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeOr,
 		tokenIdx: tokenIdx,
@@ -573,7 +570,7 @@ func (ast AST) And(n Node) And {
 	}
 }
 
-func NewAnd(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewAnd(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeAnd,
 		tokenIdx: tokenIdx,
@@ -604,7 +601,7 @@ func (ast AST) Equals(n Node) Equals {
 	}
 }
 
-func NewEquals(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewEquals(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeEquals,
 		tokenIdx: tokenIdx,
@@ -635,7 +632,7 @@ func (ast AST) NotEquals(n Node) NotEquals {
 	}
 }
 
-func NewNotEquals(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewNotEquals(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeNotEquals,
 		tokenIdx: tokenIdx,
@@ -666,7 +663,7 @@ func (ast AST) GreaterThan(n Node) GreaterThan {
 	}
 }
 
-func NewGreaterThan(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewGreaterThan(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeGreaterThan,
 		tokenIdx: tokenIdx,
@@ -697,7 +694,7 @@ func (ast AST) LessThan(n Node) LessThan {
 	}
 }
 
-func NewLessThan(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewLessThan(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeLessThan,
 		tokenIdx: tokenIdx,
@@ -728,7 +725,7 @@ func (ast AST) GreaterThanEquals(n Node) GreaterThanEquals {
 	}
 }
 
-func NewGreaterThanEquals(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewGreaterThanEquals(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeGreaterThanEquals,
 		tokenIdx: tokenIdx,
@@ -759,7 +756,7 @@ func (ast AST) LessThanEquals(n Node) LessThanEquals {
 	}
 }
 
-func NewLessThanEquals(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewLessThanEquals(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeLessThanEquals,
 		tokenIdx: tokenIdx,
@@ -790,7 +787,7 @@ func (ast AST) BinaryPlus(n Node) BinaryPlus {
 	}
 }
 
-func NewBinaryPlus(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewBinaryPlus(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeBinaryPlus,
 		tokenIdx: tokenIdx,
@@ -821,7 +818,7 @@ func (ast AST) BinaryMinus(n Node) BinaryMinus {
 	}
 }
 
-func NewBinaryMinus(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewBinaryMinus(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeBinaryMinus,
 		tokenIdx: tokenIdx,
@@ -852,7 +849,7 @@ func (ast AST) Multiply(n Node) Multiply {
 	}
 }
 
-func NewMultiply(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewMultiply(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeMultiply,
 		tokenIdx: tokenIdx,
@@ -883,7 +880,7 @@ func (ast AST) Divide(n Node) Divide {
 	}
 }
 
-func NewDivide(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewDivide(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeDivide,
 		tokenIdx: tokenIdx,
@@ -912,7 +909,7 @@ func (ast AST) UnaryPlus(n Node) UnaryPlus {
 	}
 }
 
-func NewUnaryPlus(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewUnaryPlus(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeUnaryPlus,
 		tokenIdx: tokenIdx,
@@ -941,7 +938,7 @@ func (ast AST) UnaryMinus(n Node) UnaryMinus {
 	}
 }
 
-func NewUnaryMinus(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewUnaryMinus(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeUnaryMinus,
 		tokenIdx: tokenIdx,
@@ -969,7 +966,7 @@ func (ast AST) Not(n Node) Not {
 		Unary: n.lhs,
 	}
 }
-func NewNot(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewNot(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeNot,
 		tokenIdx: tokenIdx,
@@ -1002,7 +999,7 @@ func (ast AST) IdentifierList(n Node) IdentifierList {
 		Identifiers: ids,
 	}
 }
-func NewIdentifierList(tokenIdx TokenID, start NodeID, end NodeID) Node {
+func NewIdentifierList(tokenIdx s.TokenID, start NodeID, end NodeID) Node {
 	return Node{
 		tag:      NodeIdentifierList,
 		tokenIdx: tokenIdx,
@@ -1041,7 +1038,7 @@ func (ast AST) ExpressionList(n Node) ExpressionList {
 	}
 }
 
-func NewExpressionList(tokenIdx TokenID, start NodeID, end NodeID) Node {
+func NewExpressionList(tokenIdx s.TokenID, start NodeID, end NodeID) Node {
 	return Node{
 		tag:      NodeExpressionList,
 		tokenIdx: tokenIdx,
@@ -1061,7 +1058,7 @@ func ExpressionList_String(ast AST, i NodeID) string {
 }
 
 type IntLiteral struct {
-	Token TokenID
+	Token s.TokenID
 }
 
 func (ast AST) IntLiteral(n Node) IntLiteral {
@@ -1069,7 +1066,7 @@ func (ast AST) IntLiteral(n Node) IntLiteral {
 		Token: n.tokenIdx,
 	}
 }
-func NewIntLiteral(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewIntLiteral(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeIntLiteral,
 		tokenIdx: tokenIdx,
@@ -1089,7 +1086,7 @@ func IntLiteral_String(ast AST, i NodeID) string {
 }
 
 type FloatLiteral struct {
-	Token TokenID
+	Token s.TokenID
 }
 
 func (ast AST) FloatLiteral(n Node) FloatLiteral {
@@ -1097,7 +1094,7 @@ func (ast AST) FloatLiteral(n Node) FloatLiteral {
 		Token: n.tokenIdx,
 	}
 }
-func NewFloatLiteral(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewFloatLiteral(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeFloatLiteral,
 		tokenIdx: tokenIdx,
@@ -1117,7 +1114,7 @@ func FloatLiteral_String(ast AST, i NodeID) string {
 }
 
 type StringLiteral struct {
-	Token TokenID
+	Token s.TokenID
 }
 
 func (ast AST) StringLiteral(n Node) StringLiteral {
@@ -1125,7 +1122,7 @@ func (ast AST) StringLiteral(n Node) StringLiteral {
 		Token: n.tokenIdx,
 	}
 }
-func NewStringLiteral(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewStringLiteral(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeStringLiteral,
 		tokenIdx: tokenIdx,
@@ -1145,7 +1142,7 @@ func StringLiteral_String(ast AST, i NodeID) string {
 }
 
 type Identifier struct {
-	Token TokenID
+	Token s.TokenID
 }
 
 func (ast AST) Identifier(n Node) Identifier {
@@ -1153,7 +1150,7 @@ func (ast AST) Identifier(n Node) Identifier {
 		Token: n.tokenIdx,
 	}
 }
-func NewIdentifier(tokenIdx TokenID, lhs NodeID, rhs NodeID) Node {
+func NewIdentifier(tokenIdx s.TokenID, lhs NodeID, rhs NodeID) Node {
 	return Node{
 		tag:      NodeIdentifier,
 		tokenIdx: tokenIdx,
@@ -1173,7 +1170,7 @@ func Identifier_String(ast AST, i NodeID) string {
 }
 
 type AST struct {
-	src   *Source
+	src   *s.Source
 	nodes []Node
 
 	// NOTE: That whole thing about "extra" like in zig compiler
@@ -1182,11 +1179,27 @@ type AST struct {
 	// fixed number of indicies (for any node), and that number depends on the node type
 	// latter is more plausable, bc it's more versatile and basically superset
 	// of my implementation. Well, will stick to current implemenation...
-	extra []anyIndex
+	extra []int
 }
 
-func NewAST(src *Source) AST {
+func NewAST(src *s.Source) AST {
 	return AST{src: src}
+}
+
+func (ast *AST) AddNode(n Node) NodeID {
+	ast.nodes = append(ast.nodes, n)
+	return NodeID(len(ast.nodes) - 1)
+}
+
+func (ast *AST) AddExtra(extra []int) (start NodeID, end NodeID) {
+	ast.extra = append(ast.extra, extra...)
+	start = NodeID(len(ast.extra) - len(extra))
+	end = NodeID(len(ast.extra))
+	return
+}
+
+func (ast AST) SetNode(i NodeID, n Node) {
+	ast.nodes[i] = n
 }
 
 func (ast AST) GetNode(i NodeID) Node {
@@ -1199,11 +1212,49 @@ func (ast AST) GetNodeString(i NodeID) string {
 	return getString(ast, i)
 }
 
-func (ast *AST) Traverse(onEnter NodeAction, onExit NodeAction) {
-	ast.traverseNode(onEnter, onExit, 0)
+func (ast *AST) TraversePreorder(onEnter NodeAction, onExit NodeAction) {
+	ast.traverseNodePreorder(onEnter, onExit, 0)
 }
 
-func (ast *AST) Dump(doFormat bool) string {
+func (ast *AST) traverseNodePreorder(onEnter NodeAction, onExit NodeAction, i NodeID) {
+	if i == NodeIDUndefined {
+		return
+	}
+	n := ast.nodes[i]
+	stopTraversal := onEnter(ast, i)
+	defer onExit(ast, i)
+	if stopTraversal {
+		return
+	}
+
+	getChildren := NodeChildren[n.tag]
+	children := getChildren(*ast, i)
+	for _, c := range children {
+		ast.traverseNodePreorder(onEnter, onExit, c)
+	}
+}
+
+func (ast *AST) TraversePostorder(onEnter NodeAction, onExit NodeAction) {
+	ast.traverseNodePostorder(onEnter, onExit, 0)
+}
+
+func (ast *AST) traverseNodePostorder(onEnter NodeAction, onExit NodeAction, i NodeID) {
+	if i == NodeIDUndefined {
+		return
+	}
+	n := ast.nodes[i]
+
+	getChildren := NodeChildren[n.tag]
+	children := getChildren(*ast, i)
+	for _, c := range children {
+		ast.traverseNodePostorder(onEnter, onExit, c)
+	}
+
+	onEnter(ast, i)
+	onExit(ast, i)
+}
+
+func (ast *AST) Dump() string {
 	str := strings.Builder{}
 	onEnter := func(ast *AST, i NodeID) (stopTraversal bool) {
 		str.WriteByte('(')
@@ -1218,79 +1269,7 @@ func (ast *AST) Dump(doFormat bool) string {
 		str.WriteByte(')')
 		return false
 	}
-	ast.Traverse(onEnter, onExit)
+	ast.TraversePreorder(onEnter, onExit)
 
-	if doFormat {
-		return formatSExpr(str.String())
-	}
 	return str.String()
-}
-
-func (ast *AST) traverseNode(onEnter NodeAction, onExit NodeAction, i NodeID) {
-	if i == NodeIDUndefined {
-		return
-	}
-	n := ast.nodes[i]
-	stopTraversal := onEnter(ast, i)
-	defer onExit(ast, i)
-	if stopTraversal {
-		return
-	}
-
-	getChildren := NodeChildren[n.tag]
-	children := getChildren(*ast, i)
-	for _, c := range children {
-		ast.traverseNode(onEnter, onExit, c)
-	}
-}
-
-func formatSExpr(sexpr string) string {
-	formatted := strings.Builder{}
-	depth := -1
-	for i := range sexpr {
-		if sexpr[i] == '(' {
-			depth++
-			formatted.WriteByte('\n')
-			for j := 0; j < depth; j++ {
-				formatted.WriteString("    ")
-			}
-			formatted.WriteByte('(')
-		} else if sexpr[i] == ')' {
-			depth--
-			formatted.WriteByte(')')
-		} else {
-			formatted.WriteByte(sexpr[i])
-		}
-	}
-	return formatted.String()
-}
-
-func unformatSExpr(s string) string {
-	formatted := strings.Builder{}
-	skipWS := func(i int) (int, bool) {
-		wasSpace := false
-		for s[i] == ' ' || s[i] == '\n' || s[i] == '\t' {
-			wasSpace = true
-			i++
-			if i >= len(s) {
-				break
-			}
-		}
-		return i, wasSpace
-	}
-
-	for i := 0; i < len(s); i++ {
-		j, wasSpace := skipWS(i)
-		if j >= len(s) {
-			break
-		}
-		i = j
-		if wasSpace {
-			if s[i] != '(' && s[i] != ')' {
-				formatted.WriteByte(' ')
-			}
-		}
-		formatted.WriteByte(s[i])
-	}
-	return formatted.String()
 }

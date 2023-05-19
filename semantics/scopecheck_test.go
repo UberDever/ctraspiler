@@ -2,8 +2,9 @@ package semantics
 
 import (
 	"errors"
+	a "some/ast"
 	s "some/syntax"
-	"some/util"
+	u "some/util"
 	"strings"
 	"testing"
 
@@ -14,7 +15,7 @@ func runScopecheck(code string) error {
 	text := utf8string.NewString(code)
 	src := s.NewSource("lookup_test", *text)
 
-	handler := util.NewHandler()
+	handler := u.NewHandler()
 	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
 	if !handler.Empty() {
@@ -22,7 +23,7 @@ func runScopecheck(code string) error {
 		return errors.New(strings.Join(errs, ""))
 	}
 
-	parser := s.NewParser(&handler)
+	parser := a.NewParser(&handler)
 	ast := parser.Parse(&src)
 	if !handler.Empty() {
 		errs := handler.AllErrors()
@@ -52,23 +53,8 @@ func TestScopecheckDeclarations(t *testing.T) {
 			some(a, v3)
 		}
 	`
-	text := utf8string.NewString(code)
-	src := s.NewSource("lookup_test", *text)
-
-	handler := util.NewHandler()
-	tokenizer := s.NewTokenizer(&handler)
-	tokenizer.Tokenize(&src)
-	parser := s.NewParser(&handler)
-	ast := parser.Parse(&src)
-	result := ScopecheckPass(&src, &ast, &handler)
-
-	namesSet := map[string]any{}
-	for i, n := range result.UniqueNames {
-		name := string(n)
-		if _, has := namesSet[name]; has {
-			t.Fatalf("Key at node = %d have been already encountered", i)
-		}
-		namesSet[name] = true
+	if e := runScopecheck(code); e != nil {
+		t.Error(e)
 	}
 }
 
@@ -93,8 +79,23 @@ func TestScopecheckUniqueNames(t *testing.T) {
 			some(a, v3)
 		}
 	`
-	if e := runScopecheck(code); e != nil {
-		t.Error(e)
+	text := utf8string.NewString(code)
+	src := s.NewSource("lookup_test", *text)
+
+	handler := u.NewHandler()
+	tokenizer := s.NewTokenizer(&handler)
+	tokenizer.Tokenize(&src)
+	parser := a.NewParser(&handler)
+	ast := parser.Parse(&src)
+	result := ScopecheckPass(&src, &ast, &handler)
+
+	namesSet := map[string]any{}
+	for i, n := range result.UniqueNames {
+		name := string(n)
+		if _, has := namesSet[name]; has {
+			t.Fatalf("Key at node = %d have been already encountered", i)
+		}
+		namesSet[name] = true
 	}
 }
 
