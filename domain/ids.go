@@ -89,7 +89,7 @@ const (
 type Type int
 
 const TypeInvalid Type = math.MinInt
-const TypeTypeVar Type = math.MaxInt
+const TypeVar Type = math.MaxInt
 
 const (
 	TypeInt Type = -iota - 1

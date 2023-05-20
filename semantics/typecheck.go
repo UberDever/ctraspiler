@@ -44,6 +44,26 @@ func (c *typeCheckContext) popType() ID.Type {
 	return t
 }
 
+func (c typeCheckContext) result(ast *a.AST) a.TypedAST {
+	nodeTypes := a.NodeTypes{}
+	repo := NewTypeRepo()
+	for id := 0; id < c.repo.Count(); id++ {
+		originalT := c.repo.GetType(ID.Type(id))
+		actualID := ID.Type(c.unificationSet.Find(uint(id)))
+		actualT := c.repo.GetType(actualID)
+		nodeTypes.Add(originalT.Node, actualID)
+
+		subtypes := make([]ID.Type, 0, 2)
+		it := c.repo.Subtypes(actualID)
+		for !it.Done() {
+			subtypes = append(subtypes, it.Next())
+		}
+		repo.AddType(originalT.Node, actualT.Kind, subtypes[0], subtypes[1:]...)
+	}
+
+	return a.NewTypedAST(ast, repo, nodeTypes)
+}
+
 func (c *typeCheckContext) unify(id1, id2 ID.Type) bool {
 	i1 := ID.Type(c.unificationSet.Find(uint(id1)))
 	i2 := ID.Type(c.unificationSet.Find(uint(id2)))
@@ -98,25 +118,25 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 	}
 	_ = addFunctionType
 
-	onEnter := func(ast *a.AST, i ID.Node) (shouldStop bool) {
-		n := ast.GetNode(i)
+	onEnter := func(ast *a.AST, id ID.Node) (shouldStop bool) {
+		n := ast.GetNode(id)
 
 		switch n.Tag() {
 		case ID.NodeIntLiteral:
-			v := addSimpleType(i, ID.TypeTypeVar)
+			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
 			ctx.unify(t, v)
 			ctx.pushType(v)
 		case ID.NodeIdentifier:
-			id, has := uniqueNames[i]
+			name, has := uniqueNames[id]
 			if !has {
 				panic("Something went horribly wrong")
 			}
-			seenT, seen := ctx.seenIdentifierTypes[string(id)]
+			seenT, seen := ctx.seenIdentifierTypes[string(name)]
 			var v ID.Type
 			if !seen {
-				v = addSimpleType(i, ID.TypeTypeVar)
-				ctx.seenIdentifierTypes[string(id)] = v
+				v = addSimpleType(id, ID.TypeVar)
+				ctx.seenIdentifierTypes[string(name)] = v
 			} else {
 				v = seenT
 			}
@@ -124,11 +144,16 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		case ID.NodeBinaryPlus:
 			lhsT := ctx.popType()
 			rhsT := ctx.popType()
-			v := addSimpleType(i, ID.TypeTypeVar)
+			v := addSimpleType(id, ID.TypeVar)
 			ctx.unify(lhsT, rhsT)
 			ctx.unify(lhsT, v)
 			ctx.pushType(v)
 		case ID.NodeAssignment:
+			v := ctx.popType()
+			t := ctx.popType()
+			ctx.unify(t, v)
+			// no push type - statement
+		case ID.NodeConstDecl:
 			v := ctx.popType()
 			t := ctx.popType()
 			ctx.unify(t, v)
@@ -142,21 +167,5 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 	}
 
 	ast.TraversePostorder(onEnter, onExit)
-
-	nodeTypes := a.NodeTypes{}
-	repo := NewTypeRepo()
-	for i := 0; i < ctx.repo.Count(); i++ {
-		id := ID.Type(ctx.unificationSet.Find(uint(i)))
-		t := ctx.repo.GetType(id)
-		nodeTypes.Add(t.Node, id)
-
-		subtypes := make([]ID.Type, 0, 2)
-		it := ctx.repo.Subtypes(id)
-		for !it.Done() {
-			subtypes = append(subtypes, it.Next())
-		}
-		repo.AddType(t.Node, t.Kind, subtypes[0], subtypes[:1]...)
-	}
-
-	return a.NewTypedAST(ast, repo, nodeTypes)
+	return ctx.result(ast)
 }

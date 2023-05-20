@@ -1265,7 +1265,7 @@ type TypedAST struct {
 func NewTypedAST(ast *AST, repo T.TypeRepo, nodeTypes NodeTypes) TypedAST {
 	tAst := TypedAST{
 		AST:       *ast,
-		nodeTypes: NewNodeTypes(),
+		nodeTypes: nodeTypes,
 		repo:      repo,
 	}
 	return tAst
@@ -1275,17 +1275,20 @@ func (ast *TypedAST) Dump() string {
 	str := strings.Builder{}
 	onEnter := func(_ *AST, id ID.Node) (stopTraversal bool) {
 		str.WriteByte('(')
-		str.WriteString(ast.GetNodeString(id))
+		if n := ast.AST.GetNode(id); n.Tag() == ID.NodeIdentifierList {
+			return
+		}
 
+		str.WriteString(ast.GetNodeString(id))
 		if found := ast.nodeTypes.Find(id); found != ID.TypeInvalid {
-			str.WriteByte('{')
+			str.WriteByte(' ')
+			str.WriteByte('`')
 			str.WriteString(ast.repo.GetString(found))
-			str.WriteByte('}')
+			str.WriteByte('`')
 		}
 
 		// filter nodes that are composite by themselves
-		n := ast.AST.GetNode(id)
-		stopTraversal = n.Tag() == ID.NodeIdentifierList
+
 		return
 	}
 	onExit := func(_ *AST, i ID.Node) (stopTraversal bool) {

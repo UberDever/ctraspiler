@@ -56,8 +56,11 @@ func (r TypeRepo) Subtypes(id ID.Type) typeIterator {
 }
 
 func (r TypeRepo) IsTypeVariable(id ID.Type) bool {
-	if id == ID.TypeTypeVar {
+	if id == ID.TypeVar {
 		return true
+	}
+	if id < 0 {
+		return false
 	}
 	if id == ID.TypeInvalid {
 		panic("Something went horribly wrong")
