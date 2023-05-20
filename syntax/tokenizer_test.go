@@ -1,6 +1,7 @@
 package syntax
 
 import (
+	ID "some/domain"
 	"some/util"
 	"strings"
 	"testing"
@@ -26,31 +27,31 @@ func TestTokenizerTokens(t *testing.T) {
 
 	tokens := src.tokens
 	expected := [...]struct {
-		TokenTag
+		ID.Token
 		string
 	}{
-		{TokenKeyword, "fn"},
-		{TokenIdentifier, "identifier"},
-		{TokenPunctuation, "("},
-		{TokenPunctuation, ")"},
-		{TokenTerminator, "\n"},
-		{TokenKeyword, "break"},
-		{TokenTerminator, "\n"},
-		{TokenBinaryOp, "&&"},
-		{TokenBinaryOp, "=="},
-		{TokenBinaryOp, "+"},
-		{TokenBinaryOp, "-"},
-		{TokenUnaryOp, "*"},
-		{TokenBinaryOp, "/"},
-		{TokenUnaryOp, "!"},
-		{TokenIntLit, "129389512754912957199521"},
-		{TokenTerminator, "\n"},
-		{TokenFloatLit, "3.63252e-24"},
-		{TokenTerminator, "\n"},
-		{TokenStringLit, "\"some string\""},
-		{TokenTerminator, "\n"},
-		{TokenIdentifier, "Идентификатор"},
-		{TokenTerminator, "\n"},
+		{ID.TokenKeyword, "fn"},
+		{ID.TokenIdentifier, "identifier"},
+		{ID.TokenPunctuation, "("},
+		{ID.TokenPunctuation, ")"},
+		{ID.TokenTerminator, "\n"},
+		{ID.TokenKeyword, "break"},
+		{ID.TokenTerminator, "\n"},
+		{ID.TokenBinaryOp, "&&"},
+		{ID.TokenBinaryOp, "=="},
+		{ID.TokenBinaryOp, "+"},
+		{ID.TokenBinaryOp, "-"},
+		{ID.TokenUnaryOp, "*"},
+		{ID.TokenBinaryOp, "/"},
+		{ID.TokenUnaryOp, "!"},
+		{ID.TokenIntLit, "129389512754912957199521"},
+		{ID.TokenTerminator, "\n"},
+		{ID.TokenFloatLit, "3.63252e-24"},
+		{ID.TokenTerminator, "\n"},
+		{ID.TokenStringLit, "\"some string\""},
+		{ID.TokenTerminator, "\n"},
+		{ID.TokenIdentifier, "Идентификатор"},
+		{ID.TokenTerminator, "\n"},
 	}
 
 	if !handler.Empty() {
@@ -58,14 +59,14 @@ func TestTokenizerTokens(t *testing.T) {
 		t.Error(strings.Join(errs, " "))
 	}
 
-	if tokens[len(tokens)-1].Tag != TokenEOF {
+	if tokens[len(tokens)-1].Tag != ID.TokenEOF {
 		t.Errorf("Missed EOF at the end of token stream")
 	}
 	tokens = tokens[:len(tokens)-1]
 
 	// for i := range tokens {
 	// 	t := tokens[i]
-	// 	if t.tag == TokenTerminator {
+	// 	if t.tag == ID.TokenTerminator {
 	// 		fmt.Print(";")
 	// 	} else {
 	// 		fmt.Print(source.Slice(int(t.start), int(t.end)+1))
@@ -85,8 +86,8 @@ func TestTokenizerTokens(t *testing.T) {
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.Tag != rhs.TokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.Tag, rhs.TokenTag)
+		if lhs.Tag != rhs.Token {
+			t.Errorf("[%d] Types %d != %d", i, lhs.Tag, rhs.Token)
 		}
 	}
 }
@@ -109,26 +110,26 @@ func TestTokenizerProgram(t *testing.T) {
 
 	tokens := src.tokens
 	expected := [...]struct {
-		TokenTag
+		ID.Token
 		string
 	}{
-		{TokenKeyword, "fn"},
-		{TokenIdentifier, "main"},
-		{TokenPunctuation, "("},
-		{TokenPunctuation, ")"},
-		{TokenPunctuation, "{"},
-		{TokenPunctuation, "}"},
-		{TokenTerminator, "\n"},
-		{TokenKeyword, "fn"},
-		{TokenIdentifier, "some"},
-		{TokenPunctuation, "("},
-		{TokenIdentifier, "a"},
-		{TokenPunctuation, ","},
-		{TokenIdentifier, "b"},
-		{TokenPunctuation, ")"},
-		{TokenPunctuation, "{"},
-		{TokenPunctuation, "}"},
-		{TokenTerminator, "\n"},
+		{ID.TokenKeyword, "fn"},
+		{ID.TokenIdentifier, "main"},
+		{ID.TokenPunctuation, "("},
+		{ID.TokenPunctuation, ")"},
+		{ID.TokenPunctuation, "{"},
+		{ID.TokenPunctuation, "}"},
+		{ID.TokenTerminator, "\n"},
+		{ID.TokenKeyword, "fn"},
+		{ID.TokenIdentifier, "some"},
+		{ID.TokenPunctuation, "("},
+		{ID.TokenIdentifier, "a"},
+		{ID.TokenPunctuation, ","},
+		{ID.TokenIdentifier, "b"},
+		{ID.TokenPunctuation, ")"},
+		{ID.TokenPunctuation, "{"},
+		{ID.TokenPunctuation, "}"},
+		{ID.TokenTerminator, "\n"},
 	}
 
 	if !handler.Empty() {
@@ -136,7 +137,7 @@ func TestTokenizerProgram(t *testing.T) {
 		t.Error(strings.Join(errs, " "))
 	}
 
-	if tokens[len(tokens)-1].Tag != TokenEOF {
+	if tokens[len(tokens)-1].Tag != ID.TokenEOF {
 		t.Errorf("Missed EOF at the end of token stream")
 	}
 	tokens = tokens[:len(tokens)-1]
@@ -153,8 +154,8 @@ func TestTokenizerProgram(t *testing.T) {
 		if asStr != rhs.string {
 			t.Errorf("[%d] Strings %s != %s", i, asStr, rhs.string)
 		}
-		if lhs.Tag != rhs.TokenTag {
-			t.Errorf("[%d] Types %d != %d", i, lhs.Tag, rhs.TokenTag)
+		if lhs.Tag != rhs.Token {
+			t.Errorf("[%d] Types %d != %d", i, lhs.Tag, rhs.Token)
 		}
 	}
 }

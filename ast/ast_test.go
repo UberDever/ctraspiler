@@ -3,6 +3,7 @@ package ast
 import (
 	"errors"
 	"fmt"
+	ID "some/domain"
 	s "some/syntax"
 	u "some/util"
 	"strings"
@@ -14,9 +15,9 @@ import (
 
 func isASTValid(nodes []Node) (Node, int, bool) {
 	for i, n := range nodes {
-		if n.tokenIdx == s.TokenIDInvalid ||
-			n.lhs == NodeIDInvalid ||
-			n.rhs == NodeIDInvalid {
+		if n.tokenIdx == ID.TokenInvalid ||
+			n.lhs == ID.NodeInvalid ||
+			n.rhs == ID.NodeInvalid {
 			return n, i, false
 		}
 	}

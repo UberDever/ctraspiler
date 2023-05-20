@@ -1,43 +1,19 @@
 package syntax
 
 import (
-	"math"
-	antlr_parser "some/antlr"
+	ID "some/domain"
 	"some/util"
+
+	antlr_parser "some/antlr"
 
 	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-type TokenTag int
-type TokenID int
-
-const (
-	TokenIDInvalid TokenID = math.MinInt
-)
-
 // NOTE: This was a bad idea - full mapping of tokens is better solution
 // i.e. increase granularity
-const (
-	TokenEOF          TokenTag = -1
-	TokenKeyword               = antlr_parser.SomeKEYWORD
-	TokenIdentifier            = antlr_parser.SomeIDENTIFIER
-	TokenPunctuation           = antlr_parser.SomeOTHER_OP
-	TokenUnaryOp               = antlr_parser.SomeUNARY_OP
-	TokenBinaryOp              = antlr_parser.SomeBINARY_OP
-	TokenIntLit                = antlr_parser.SomeINT_LIT
-	TokenFloatLit              = antlr_parser.SomeFLOAT_LIT
-	TokenImaginaryLit          = antlr_parser.SomeIMAGINARY_LIT
-	TokenRuneLit               = antlr_parser.SomeRUNE_LIT
-	TokenLittleUValue          = antlr_parser.SomeLITTLE_U_VALUE
-	TokenBigUValue             = antlr_parser.SomeBIG_U_VALUE
-	TokenStringLit             = antlr_parser.SomeSTRING_LIT
-	TokenWS                    = antlr_parser.SomeWS
-	TokenTerminator            = antlr_parser.SomeTERMINATOR
-	TokenLineComment           = antlr_parser.SomeLINE_COMMENT
-)
 
 type token struct {
-	Tag   TokenTag
+	Tag   ID.Token
 	Start int
 	End   int
 	Line  int
@@ -69,19 +45,19 @@ func (tok *tokenizer) Tokenize(src *Source) {
 			continue
 		}
 		src.tokens = append(src.tokens, token{
-			Tag:   TokenTag(t.GetTokenType()),
+			Tag:   ID.Token(t.GetTokenType()),
 			Start: t.GetStart(),
 			End:   t.GetStop(),
 			Line:  t.GetLine(),
 			Col:   t.GetColumn(),
 		})
 	}
-	src.tokens = append(src.tokens, token{TokenEOF, -1, -1, -1, -1})
+	src.tokens = append(src.tokens, token{ID.TokenEOF, -1, -1, -1, -1})
 }
 
 func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []token {
 	semicolon := token{
-		Tag:   TokenTerminator,
+		Tag:   ID.TokenTerminator,
 		Start: terminator.GetStart(),
 		End:   terminator.GetStop(),
 		Line:  terminator.GetLine(),
@@ -90,24 +66,24 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 
 	if len(s.tokens) > 0 {
 		i := len(s.tokens) - 1
-		last := s.Token(TokenID(i))
+		last := s.Token(ID.Token(i))
 
 		switch last.Tag {
-		case TokenIdentifier:
+		case ID.TokenIdentifier:
 			fallthrough
-		case TokenIntLit:
+		case ID.TokenIntLit:
 			fallthrough
-		case TokenFloatLit:
+		case ID.TokenFloatLit:
 			fallthrough
-		case TokenImaginaryLit:
+		case ID.TokenImaginaryLit:
 			fallthrough
-		case TokenRuneLit:
+		case ID.TokenRuneLit:
 			fallthrough
-		case TokenStringLit:
+		case ID.TokenStringLit:
 			s.tokens = append(s.tokens, semicolon)
 
-		case TokenKeyword:
-			lexeme := s.Lexeme(TokenID(i))
+		case ID.TokenKeyword:
+			lexeme := s.Lexeme(ID.Token(i))
 			if lexeme == "break" ||
 				lexeme == "continue" ||
 				lexeme == "fallthrough" ||
@@ -115,8 +91,8 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 				s.tokens = append(s.tokens, semicolon)
 
 			}
-		case TokenPunctuation:
-			lexeme := s.Lexeme(TokenID(i))
+		case ID.TokenPunctuation:
+			lexeme := s.Lexeme(ID.Token(i))
 			if lexeme == "++" ||
 				lexeme == "--" ||
 				lexeme == ")" ||
