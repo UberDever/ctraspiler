@@ -1,4 +1,4 @@
-package semantics
+package analysis
 
 import (
 	"errors"
@@ -90,7 +90,7 @@ func TestScopecheckUniqueNames(t *testing.T) {
 	result := ScopecheckPass(&src, &ast, &handler)
 
 	namesSet := map[string]any{}
-	for i, n := range result.UniqueNames {
+	for i, n := range result.QualifiedNames {
 		name := string(n)
 		if _, has := namesSet[name]; has {
 			t.Fatalf("Key at node = %d have been already encountered", i)

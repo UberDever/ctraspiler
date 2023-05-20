@@ -1,4 +1,4 @@
-package semantics
+package analysis
 
 import (
 	"errors"
@@ -54,6 +54,9 @@ func TestSimpleTypecheck(t *testing.T) {
 	code := `
 		fn main() {
 			const a = 5 + 2
+			{
+				a = 8 + 3 + 9
+			}
 		}
 	`
 	if e := runTypecheck(code); e != nil {

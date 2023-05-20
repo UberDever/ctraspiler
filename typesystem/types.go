@@ -47,6 +47,15 @@ func (r TypeRepo) GetType(id ID.Type) nodeType {
 	return r.nodeTypes[id]
 }
 
+func (r TypeRepo) NodeType(id ID.Node) ID.Type {
+	for i, t := range r.nodeTypes {
+		if t.Node == id {
+			return ID.Type(i)
+		}
+	}
+	return ID.TypeInvalid
+}
+
 func (r TypeRepo) Count() int {
 	return len(r.nodeTypes)
 }

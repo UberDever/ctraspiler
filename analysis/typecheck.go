@@ -1,4 +1,4 @@
-package semantics
+package analysis
 
 import (
 	a "some/ast"
@@ -45,23 +45,24 @@ func (c *typeCheckContext) popType() ID.Type {
 }
 
 func (c typeCheckContext) result(ast *a.AST) a.TypedAST {
-	nodeTypes := a.NodeTypes{}
 	repo := NewTypeRepo()
 	for id := 0; id < c.repo.Count(); id++ {
 		originalT := c.repo.GetType(ID.Type(id))
+		// if originalT.Node == ID.NodeInvalid {
+		// 	continue
+		// }
 		actualID := ID.Type(c.unificationSet.Find(uint(id)))
 		actualT := c.repo.GetType(actualID)
-		nodeTypes.Add(originalT.Node, actualID)
-
 		subtypes := make([]ID.Type, 0, 2)
 		it := c.repo.Subtypes(actualID)
+
 		for !it.Done() {
 			subtypes = append(subtypes, it.Next())
 		}
 		repo.AddType(originalT.Node, actualT.Kind, subtypes[0], subtypes[1:]...)
 	}
 
-	return a.NewTypedAST(ast, repo, nodeTypes)
+	return a.NewTypedAST(ast, repo)
 }
 
 func (c *typeCheckContext) unify(id1, id2 ID.Type) bool {
@@ -100,7 +101,7 @@ func (c *typeCheckContext) unify(id1, id2 ID.Type) bool {
 // NOTE: Could have been using attributed grammar framework here
 func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST, handler *u.ErrorHandler) a.TypedAST {
 	ctx := newTypeCheckContext()
-	uniqueNames := scopeCheckResult.UniqueNames
+	qualifiedNames := scopeCheckResult.QualifiedNames
 
 	addSimpleType := func(node ID.Node, id ID.Type) ID.Type {
 		t := ctx.repo.AddType(node, ID.KindIdentity, id)
@@ -128,7 +129,7 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			ctx.unify(t, v)
 			ctx.pushType(v)
 		case ID.NodeIdentifier:
-			name, has := uniqueNames[id]
+			name, has := qualifiedNames[id]
 			if !has {
 				panic("Something went horribly wrong")
 			}
@@ -138,7 +139,8 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 				v = addSimpleType(id, ID.TypeVar)
 				ctx.seenIdentifierTypes[string(name)] = v
 			} else {
-				v = seenT
+				v = addSimpleType(id, ID.TypeVar)
+				ctx.unify(seenT, v)
 			}
 			ctx.pushType(v)
 		case ID.NodeBinaryPlus:

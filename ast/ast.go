@@ -6,8 +6,6 @@ import (
 	s "some/syntax"
 	T "some/typesystem"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 type NodeTag int
@@ -1230,43 +1228,15 @@ func (ast *AST) Dump() string {
 	return str.String()
 }
 
-type NodeType struct {
-	ID.Node
-	ID.Type
-}
-
-type NodeTypes []NodeType
-
-func NewNodeTypes() NodeTypes {
-	return make(NodeTypes, 0, 32)
-}
-
-func (ts *NodeTypes) Add(n ID.Node, t ID.Type) {
-	*ts = append(*ts, NodeType{n, t})
-}
-
-func (ts NodeTypes) Find(id ID.Node) ID.Type {
-	index := slices.IndexFunc(ts, func(n NodeType) bool {
-		return id == n.Node
-	})
-	if index == -1 {
-		return ID.TypeInvalid
-	}
-	found := ts[index].Type
-	return found
-}
-
 type TypedAST struct {
 	AST
-	nodeTypes NodeTypes
-	repo      T.TypeRepo
+	repo T.TypeRepo
 }
 
-func NewTypedAST(ast *AST, repo T.TypeRepo, nodeTypes NodeTypes) TypedAST {
+func NewTypedAST(ast *AST, repo T.TypeRepo) TypedAST {
 	tAst := TypedAST{
-		AST:       *ast,
-		nodeTypes: nodeTypes,
-		repo:      repo,
+		AST:  *ast,
+		repo: repo,
 	}
 	return tAst
 }
@@ -1280,7 +1250,8 @@ func (ast *TypedAST) Dump() string {
 		}
 
 		str.WriteString(ast.GetNodeString(id))
-		if found := ast.nodeTypes.Find(id); found != ID.TypeInvalid {
+		str.WriteString(fmt.Sprintf(":%d", id))
+		if found := ast.repo.NodeType(id); found != ID.TypeInvalid {
 			str.WriteByte(' ')
 			str.WriteByte('`')
 			str.WriteString(ast.repo.GetString(found))
