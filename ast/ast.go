@@ -1241,11 +1241,15 @@ func NewTypedAST(ast *AST, repo T.TypeRepo) TypedAST {
 	return tAst
 }
 
+func (ast TypedAST) GetNodeType(i ID.Node) ID.Type {
+	return ast.repo.NodeType(i)
+}
+
 func (ast *TypedAST) Dump() string {
 	str := strings.Builder{}
 	onEnter := func(_ *AST, id ID.Node) (stopTraversal bool) {
 		str.WriteByte('(')
-		if n := ast.AST.GetNode(id); n.Tag() == ID.NodeIdentifierList {
+		if n := ast.GetNode(id); n.Tag() == ID.NodeIdentifierList {
 			return
 		}
 
@@ -1266,7 +1270,7 @@ func (ast *TypedAST) Dump() string {
 		str.WriteByte(')')
 		return false
 	}
-	ast.AST.TraversePreorder(onEnter, onExit)
+	ast.TraversePreorder(onEnter, onExit)
 
 	return str.String()
 }
