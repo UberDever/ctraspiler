@@ -63,7 +63,7 @@ Operand:
     | "(" Expression ")" .
 
 Literal:
-    INT_LIT | FLOAT_LIT | STRING_LIT .
+    INT_LIT | FLOAT_LIT | STRING_LIT | BOOL_LIT.
 
 Selector:
     "." IDENTIFIER .

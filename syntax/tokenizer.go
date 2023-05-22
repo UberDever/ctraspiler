@@ -80,6 +80,8 @@ func (tok *tokenizer) tryInsertSemicolon(s *Source, terminator antlr.Token) []to
 		case ID.TokenRuneLit:
 			fallthrough
 		case ID.TokenStringLit:
+			fallthrough
+		case ID.TokenBoolLit:
 			s.tokens = append(s.tokens, semicolon)
 
 		case ID.TokenKeyword:

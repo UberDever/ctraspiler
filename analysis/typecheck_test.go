@@ -90,3 +90,19 @@ func TestVariableTypecheck(t *testing.T) {
 		}
 	}
 }
+
+func TestLogicalOpsTypecheck(t *testing.T) {
+	code := `
+		fn main() {
+			const a = true || false
+			const b = !a
+			const c = b && !b
+		}
+	`
+	patterns := []string{"a.*`bool`", "b.*`bool`", "c.*`bool`"}
+	for _, p := range patterns {
+		if e := runTypecheck(code, p); e != nil {
+			t.Error(e)
+		}
+	}
+}

@@ -50,6 +50,7 @@ var NodeConstructor = [...]func(ID.Token, ID.Node, ID.Node) Node{
 	ID.NodeIntLiteral:    NewIntLiteral,
 	ID.NodeFloatLiteral:  NewFloatLiteral,
 	ID.NodeStringLiteral: NewStringLiteral,
+	ID.NodeBoolLiteral:   NewBoolLiteral,
 	ID.NodeIdentifier:    NewIdentifier,
 
 	ID.NodeIdentifierList: NewIdentifierList,
@@ -90,6 +91,7 @@ var NodeString = [...]func(AST, ID.Node) string{
 	ID.NodeIntLiteral:    IntLiteral_String,
 	ID.NodeFloatLiteral:  FloatLiteral_String,
 	ID.NodeStringLiteral: StringLiteral_String,
+	ID.NodeBoolLiteral:   BoolLiteral_String,
 	ID.NodeIdentifier:    Identifier_String,
 
 	ID.NodeIdentifierList: IdentifierList_String,
@@ -130,6 +132,7 @@ var NodeChildren = [...]func(AST, ID.Node) []ID.Node{
 	ID.NodeIntLiteral:    IntLiteral_Children,
 	ID.NodeFloatLiteral:  FloatLiteral_Children,
 	ID.NodeStringLiteral: StringLiteral_Children,
+	ID.NodeBoolLiteral:   BoolLiteral_Children,
 	ID.NodeIdentifier:    Identifier_Children,
 
 	ID.NodeIdentifierList: IdentifierList_Children,
@@ -1071,6 +1074,7 @@ func (ast AST) StringLiteral(n Node) StringLiteral {
 		Token: n.tokenIdx,
 	}
 }
+
 func NewStringLiteral(tokenIdx ID.Token, lhs ID.Node, rhs ID.Node) Node {
 	return Node{
 		tag:      ID.NodeStringLiteral,
@@ -1087,6 +1091,35 @@ func StringLiteral_Children(ast AST, i ID.Node) []ID.Node {
 
 func StringLiteral_String(ast AST, i ID.Node) string {
 	n := ast.StringLiteral(ast.nodes[i])
+	return ast.src.Lexeme(n.Token)
+}
+
+type BoolLiteral struct {
+	Token ID.Token
+}
+
+func (ast AST) BoolLiteral(n Node) BoolLiteral {
+	return BoolLiteral{
+		Token: n.tokenIdx,
+	}
+}
+
+func NewBoolLiteral(tokenIdx ID.Token, lhs ID.Node, rhs ID.Node) Node {
+	return Node{
+		tag:      ID.NodeBoolLiteral,
+		tokenIdx: tokenIdx,
+		lhs:      lhs,
+		rhs:      rhs,
+	}
+
+}
+
+func BoolLiteral_Children(ast AST, i ID.Node) []ID.Node {
+	return []ID.Node{}
+}
+
+func BoolLiteral_String(ast AST, i ID.Node) string {
+	n := ast.BoolLiteral(ast.nodes[i])
 	return ast.src.Lexeme(n.Token)
 }
 

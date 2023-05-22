@@ -3,6 +3,8 @@ lexer grammar Some
 
 /// *** LEXER ***
 
+/// KEYWORDS
+
 KEYWORD
 	: 'fn'
 	| 'const'
@@ -10,9 +12,6 @@ KEYWORD
 	| 'return'
 	;
 
-IDENTIFIER
-	: LETTER (LETTER | UNICODE_DIGIT)*
-	;
 
 /// OPERATORS
 
@@ -109,6 +108,11 @@ fragment EXPONENT
 	: ('e' | 'E') ('+' | '-')? DECIMALS
 	;
 
+BOOL_LIT
+	: 'true'
+	| 'false'
+	;
+
 IMAGINARY_LIT
 	: (DECIMALS | FLOAT_LIT) 'i'
 	;
@@ -172,6 +176,13 @@ fragment RAW_STRING_LIT
 fragment INTERPRETED_STRING_LIT
 	: '"' (UNICODE_VALUE | BYTE_VALUE)* '"'
 	;
+
+/// IDENTIFIERS
+
+IDENTIFIER
+	: LETTER (LETTER | UNICODE_DIGIT)*
+	;
+
 
 /// BASIC
 

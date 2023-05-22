@@ -25,6 +25,7 @@ const (
 	TokenLittleUValue       = antlr_parser.SomeLITTLE_U_VALUE
 	TokenBigUValue          = antlr_parser.SomeBIG_U_VALUE
 	TokenStringLit          = antlr_parser.SomeSTRING_LIT
+	TokenBoolLit            = antlr_parser.SomeBOOL_LIT
 	TokenWS                 = antlr_parser.SomeWS
 	TokenTerminator         = antlr_parser.SomeTERMINATOR
 	TokenLineComment        = antlr_parser.SomeLINE_COMMENT
@@ -71,6 +72,7 @@ const (
 	NodeIntLiteral
 	NodeFloatLiteral
 	NodeStringLiteral
+	NodeBoolLiteral
 	NodeIdentifier
 
 	NodeIdentifierList
@@ -94,5 +96,6 @@ const TypeVar Type = math.MaxInt
 const (
 	TypeInt Type = -iota - 1
 	TypeFloat
+	TypeBool
 	TypeString
 )

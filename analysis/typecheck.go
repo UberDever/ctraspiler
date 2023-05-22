@@ -123,9 +123,64 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		n := ast.GetNode(id)
 
 		switch n.Tag() {
-		case ID.NodeIntLiteral:
+		case ID.NodeConstDecl:
+			v := ctx.popType()
+			t := ctx.popType()
+			ctx.unify(t, v)
+			// no push type - statement
+		case ID.NodeAssignment:
+			v := ctx.popType()
+			t := ctx.popType()
+			ctx.unify(t, v)
+			// no push type - statement
+		case ID.NodeOr:
+			fallthrough
+		case ID.NodeAnd:
+			fallthrough
+		case ID.NodeEquals:
+			fallthrough
+		case ID.NodeNotEquals:
+			fallthrough
+		case ID.NodeGreaterThan:
+			fallthrough
+		case ID.NodeLessThan:
+			fallthrough
+		case ID.NodeGreaterThanEquals:
+			fallthrough
+		case ID.NodeLessThanEquals:
+			lhsT := ctx.popType()
+			rhsT := ctx.popType()
 			v := addSimpleType(id, ID.TypeVar)
+			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
+			ctx.unify(lhsT, rhsT)
+			ctx.unify(lhsT, v)
+			ctx.unify(lhsT, t)
+			ctx.pushType(v)
+		case ID.NodeBinaryMinus:
+			fallthrough
+		case ID.NodeMultiply:
+			fallthrough
+		case ID.NodeDivide:
+			fallthrough
+		// TODO: In this case binary plus `adds` all types together, however, I need only
+		// int, float, string
+		case ID.NodeBinaryPlus:
+			lhsT := ctx.popType()
+			rhsT := ctx.popType()
+			v := addSimpleType(id, ID.TypeVar)
+			ctx.unify(lhsT, rhsT)
+			ctx.unify(lhsT, v)
+			ctx.pushType(v)
+		case ID.NodeUnaryPlus:
+			fallthrough
+		case ID.NodeUnaryMinus:
+			v := ctx.popType()
 			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
+			ctx.unify(t, v)
+			ctx.pushType(v)
+		case ID.NodeNot:
+			v := ctx.popType()
+			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
 			ctx.unify(t, v)
 			ctx.pushType(v)
 		case ID.NodeIdentifier:
@@ -143,23 +198,21 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 				ctx.unify(seenT, v)
 			}
 			ctx.pushType(v)
-		case ID.NodeBinaryPlus:
-			lhsT := ctx.popType()
-			rhsT := ctx.popType()
+		case ID.NodeIntLiteral:
 			v := addSimpleType(id, ID.TypeVar)
-			ctx.unify(lhsT, rhsT)
-			ctx.unify(lhsT, v)
+			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
+			ctx.unify(t, v)
 			ctx.pushType(v)
-		case ID.NodeAssignment:
-			v := ctx.popType()
-			t := ctx.popType()
+		case ID.NodeFloatLiteral:
+			v := addSimpleType(id, ID.TypeVar)
+			t := addSimpleType(ID.NodeInvalid, ID.TypeFloat)
 			ctx.unify(t, v)
-			// no push type - statement
-		case ID.NodeConstDecl:
-			v := ctx.popType()
-			t := ctx.popType()
+			ctx.pushType(v)
+		case ID.NodeBoolLiteral:
+			v := addSimpleType(id, ID.TypeVar)
+			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
 			ctx.unify(t, v)
-			// no push type - statement
+			ctx.pushType(v)
 		}
 		return
 	}

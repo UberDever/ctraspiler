@@ -110,6 +110,8 @@ func (r TypeRepo) GetString(id ID.Type) (s string) {
 			switch t.lhs {
 			case ID.TypeInt:
 				return "int"
+			case ID.TypeBool:
+				return "bool"
 			default:
 				panic("this switch should be exaustive")
 			}

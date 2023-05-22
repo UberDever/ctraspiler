@@ -176,7 +176,8 @@ func (p *parser) addScratchToExtra(scratch_top int) (ID.Node, ID.Node) {
 func (p *parser) isLiteral() bool {
 	return p.matchTag(ID.TokenIntLit) ||
 		p.matchTag(ID.TokenFloatLit) ||
-		p.matchTag(ID.TokenStringLit)
+		p.matchTag(ID.TokenStringLit) ||
+		p.matchTag(ID.TokenBoolLit)
 }
 
 // NOTE: AST could be built with explicit parents in nodes, this could simplify
@@ -521,6 +522,8 @@ func (p *parser) parseLiteral() ID.Node {
 		tag = ID.NodeFloatLiteral
 	} else if p.matchTag(ID.TokenStringLit) {
 		tag = ID.NodeStringLiteral
+	} else if p.matchTag(ID.TokenBoolLit) {
+		tag = ID.NodeBoolLiteral
 	} else {
 		panic("parseLiteral unimplemented")
 	}
