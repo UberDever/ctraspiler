@@ -23,6 +23,7 @@ var NodeConstructor = [...]func(ID.Token, ID.Node, ID.Node) Node{
 	ID.NodeFunctionDecl: NewFunctionDecl,
 	ID.NodeSignature:    NewSignature,
 	ID.NodeConstDecl:    NewConstDecl,
+	ID.NodeVarDecl:      NewVarDecl,
 	ID.NodeAssignment:   NewAssignment,
 	ID.NodeReturnStmt:   NewReturnStmt,
 
@@ -64,6 +65,7 @@ var NodeString = [...]func(AST, ID.Node) string{
 	ID.NodeFunctionDecl: FunctionDecl_String,
 	ID.NodeSignature:    Signature_String,
 	ID.NodeConstDecl:    ConstDecl_String,
+	ID.NodeVarDecl:      VarDecl_String,
 	ID.NodeAssignment:   Assignment_String,
 	ID.NodeReturnStmt:   ReturnStmt_String,
 
@@ -105,6 +107,7 @@ var NodeChildren = [...]func(AST, ID.Node) []ID.Node{
 	ID.NodeFunctionDecl: FunctionDecl_Children,
 	ID.NodeSignature:    Signature_Children,
 	ID.NodeConstDecl:    ConstDecl_Children,
+	ID.NodeVarDecl:      VarDecl_Children,
 	ID.NodeAssignment:   Assignment_Children,
 	ID.NodeReturnStmt:   ReturnStmt_Children,
 
@@ -335,6 +338,36 @@ func ConstDecl_Children(ast AST, i ID.Node) []ID.Node {
 
 func ConstDecl_String(ast AST, i ID.Node) string {
 	return "ConstDecl"
+}
+
+type VarDecl struct {
+	IdentifierList ID.Node
+	ExpressionList ID.Node
+}
+
+func (ast AST) VarDecl(n Node) VarDecl {
+	return VarDecl{
+		IdentifierList: n.lhs,
+		ExpressionList: n.rhs,
+	}
+}
+
+func NewVarDecl(tokenIdx ID.Token, identifierList ID.Node, expressionList ID.Node) Node {
+	return Node{
+		tag:      ID.NodeVarDecl,
+		tokenIdx: tokenIdx,
+		lhs:      identifierList,
+		rhs:      expressionList,
+	}
+}
+
+func VarDecl_Children(ast AST, i ID.Node) []ID.Node {
+	n := ast.VarDecl(ast.nodes[i])
+	return []ID.Node{n.IdentifierList, n.ExpressionList}
+}
+
+func VarDecl_String(ast AST, i ID.Node) string {
+	return "VarDecl"
 }
 
 type Assignment struct {

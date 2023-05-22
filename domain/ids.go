@@ -45,6 +45,7 @@ const (
 	NodeFunctionDecl
 	NodeSignature
 	NodeConstDecl
+	NodeVarDecl
 	NodeAssignment
 	NodeReturnStmt
 

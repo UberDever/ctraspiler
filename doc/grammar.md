@@ -27,6 +27,7 @@ Statement:
     | Block
     | ExpressionStmt
     | Assignment
+    | VarDecl
     | ConstDecl .
 
 EmptyStmt: .
@@ -39,6 +40,9 @@ ExpressionStmt:
 
 ConstDecl:
     "const" IdentifierList "=" ExpressionList .
+
+VarDecl:
+    "var" IdentifierList "=" ExpressionList .
 
 Assignment:
     ExpressionList AssignOp ExpressionList .

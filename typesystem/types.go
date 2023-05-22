@@ -110,6 +110,10 @@ func (r TypeRepo) GetString(id ID.Type) (s string) {
 			switch t.lhs {
 			case ID.TypeInt:
 				return "int"
+			case ID.TypeFloat:
+				return "float"
+			case ID.TypeString:
+				return "string"
 			case ID.TypeBool:
 				return "bool"
 			default:

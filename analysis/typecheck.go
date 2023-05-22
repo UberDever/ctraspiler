@@ -123,11 +123,10 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		n := ast.GetNode(id)
 
 		switch n.Tag() {
+		case ID.NodeVarDecl:
+			fallthrough
 		case ID.NodeConstDecl:
-			v := ctx.popType()
-			t := ctx.popType()
-			ctx.unify(t, v)
-			// no push type - statement
+			fallthrough
 		case ID.NodeAssignment:
 			v := ctx.popType()
 			t := ctx.popType()

@@ -302,6 +302,8 @@ func (p *parser) parseStatement() ID.Node {
 		return ID.NodeInvalid
 	} else if p.matchToken(ID.TokenKeyword, "const") {
 		return p.parseConstDecl()
+	} else if p.matchToken(ID.TokenKeyword, "var") {
+		return p.parseVarDecl()
 	} else if p.matchToken(ID.TokenKeyword, "return") {
 		return p.parseReturnStmt()
 	} else if p.matchToken(ID.TokenPunctuation, "{") {
@@ -343,6 +345,24 @@ func (p *parser) parseConstDecl() ID.Node {
 	tokenIdx = p.current
 
 	ok := p.expect(ID.TokenKeyword, "const")
+	if !ok {
+		return ID.NodeInvalid
+	}
+	lhs = p.parseIdentifierList()
+	ok = p.expect(ID.TokenPunctuation, "=")
+	if !ok {
+		return ID.NodeInvalid
+	}
+	rhs = p.parseExpressionList()
+
+	return p.ast.AddNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
+}
+
+func (p *parser) parseVarDecl() ID.Node {
+	tag, tokenIdx, lhs, rhs := ID.NodeVarDecl, ID.TokenInvalid, ID.NodeInvalid, ID.NodeInvalid
+	tokenIdx = p.current
+
+	ok := p.expect(ID.TokenKeyword, "var")
 	if !ok {
 		return ID.NodeInvalid
 	}

@@ -8,6 +8,7 @@ lexer grammar Some
 KEYWORD
 	: 'fn'
 	| 'const'
+	| 'var'
 	| 'break'
 	| 'return'
 	;

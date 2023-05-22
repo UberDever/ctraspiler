@@ -75,7 +75,7 @@ func TestSimpleTypecheck(t *testing.T) {
 	}
 }
 
-func TestVariableTypecheck(t *testing.T) {
+func TestConstantsTypecheck(t *testing.T) {
 	code := `
 		fn main() {
 			const a = 5 + 2
@@ -100,6 +100,23 @@ func TestLogicalOpsTypecheck(t *testing.T) {
 		}
 	`
 	patterns := []string{"a.*`bool`", "b.*`bool`", "c.*`bool`"}
+	for _, p := range patterns {
+		if e := runTypecheck(code, p); e != nil {
+			t.Error(e)
+		}
+	}
+}
+
+func TestVariableTypecheck(t *testing.T) {
+	code := `
+		fn main() {
+			var a = true
+			var b = a
+			const c = a && b
+			var d = 5.2
+		}
+	`
+	patterns := []string{"a.*`bool`", "b.*`bool`", "c.*`bool`", "d.*`float`"}
 	for _, p := range patterns {
 		if e := runTypecheck(code, p); e != nil {
 			t.Error(e)
