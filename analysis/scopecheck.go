@@ -1,17 +1,16 @@
 package analysis
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	a "some/ast"
 	ID "some/domain"
 	s "some/syntax"
 	u "some/util"
+	"strings"
 )
 
 type declID int
-type QualifiedName []byte
 
 const declTop declID = -1
 const declInvalid declID = math.MinInt
@@ -110,16 +109,67 @@ func (e scopeEnv) lookup(node ID.Node) declID {
 }
 
 func (e scopeEnv) qualifiedName(i declID) QualifiedName {
-	buffer := QualifiedName{}
+	buffer := strings.Builder{}
 	d := e.declarations[i]
 	p := d.parent
 	for p != declTop {
-		buffer = binary.LittleEndian.AppendUint64(buffer, uint64(d.node))
-		buffer = binary.LittleEndian.AppendUint64(buffer, uint64(d.parent))
+		buffer.WriteString(fmt.Sprint(d.node))
+		buffer.WriteByte('\'')
+		buffer.WriteString(fmt.Sprint(d.parent))
+		buffer.WriteByte('\'')
 		d = e.declarations[p]
 		p = d.parent
 	}
-	return buffer
+	return QualifiedName(buffer.String())
+}
+
+type QualifiedName string
+type QualifiedNames struct {
+	names     []QualifiedName
+	declNodes []ID.Node
+	nodeNames map[ID.Node]uint
+}
+
+func NewQualifiedNames(ctx *scopecheckContext) QualifiedNames {
+	names := QualifiedNames{
+		names:     make([]QualifiedName, 0, 16),
+		declNodes: make([]ID.Node, 0, 16),
+		nodeNames: make(map[ID.Node]uint),
+	}
+	declToName := map[declID]uint{}
+	for i, d := range ctx.env.declarations {
+		if d.isIdentifier {
+			name := ctx.env.qualifiedName(declID(i))
+			names.names = append(names.names, name)
+			last := uint(len(names.names) - 1)
+			names.declNodes = append(names.declNodes, d.node)
+			names.nodeNames[d.node] = last
+			declToName[declID(i)] = last
+		}
+	}
+	for _, u := range ctx.env.declUsages {
+		names.nodeNames[u.user] = declToName[u.decl]
+	}
+	return names
+}
+
+func (n QualifiedNames) GetNodeName(id ID.Node) (QualifiedName, bool) {
+	i, has := n.nodeNames[id]
+	return n.names[i], has
+}
+
+func (n QualifiedNames) GetDeclarationNode(name QualifiedName) ID.Node {
+	for _, id := range n.declNodes {
+		nameID := n.nodeNames[id]
+		if n.names[nameID] == name {
+			return id
+		}
+	}
+	return ID.NodeInvalid
+}
+
+func (n QualifiedNames) GetDeclarations() []ID.Node {
+	return n.declNodes
 }
 
 type scopecheckContext struct {
@@ -131,7 +181,7 @@ type scopecheckContext struct {
 
 type ScopeCheckResult struct {
 	Ast            *a.AST
-	QualifiedNames map[ID.Node]QualifiedName
+	QualifiedNames QualifiedNames
 }
 
 func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeCheckResult {
@@ -153,7 +203,7 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 		return declID(len(ctx.env.declarations) - 1)
 	}
 
-	dump := func(decls []decl, delimiter string) {
+	dump := func(decls []decl, usages []usage, delimiter string) {
 		for i := range decls {
 			d := decls[i]
 			p := d.parent
@@ -164,7 +214,13 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 				p = d.parent
 			}
 			name = "src" + name
-			fmt.Printf("%d: %s%s", i, name, delimiter)
+			isUsage := " used by"
+			for _, u := range usages {
+				if u.decl == declID(i) {
+					isUsage += fmt.Sprintf(" %d", u.user)
+				}
+			}
+			fmt.Printf("%d: %s%s%s", i, name, isUsage, delimiter)
 		}
 		fmt.Println("")
 	}
@@ -233,19 +289,9 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 
 	ast.TraversePreorder(onEnter, onExit)
 
-	dump(ctx.env.declarations, "\n")
-
-	qualifiedNames := make(map[ID.Node]QualifiedName)
-	for i, d := range ctx.env.declarations {
-		if d.isIdentifier {
-			qualifiedNames[d.node] = ctx.env.qualifiedName(declID(i))
-		}
-	}
-	for _, u := range ctx.env.declUsages {
-		qualifiedNames[u.user] = ctx.env.qualifiedName(u.decl)
-	}
+	dump(ctx.env.declarations, ctx.env.declUsages, "\n")
 	return ScopeCheckResult{
 		Ast:            ast,
-		QualifiedNames: qualifiedNames,
+		QualifiedNames: NewQualifiedNames(&ctx),
 	}
 }

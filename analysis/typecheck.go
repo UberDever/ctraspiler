@@ -129,7 +129,7 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			ctx.unify(t, v)
 			ctx.pushType(v)
 		case ID.NodeIdentifier:
-			name, has := qualifiedNames[id]
+			name, has := qualifiedNames.GetNodeName(id)
 			if !has {
 				panic("Something went horribly wrong")
 			}

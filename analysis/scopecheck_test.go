@@ -1,9 +1,7 @@
 package analysis
 
 import (
-	"encoding/hex"
 	"errors"
-	"fmt"
 	a "some/ast"
 	ID "some/domain"
 	s "some/syntax"
@@ -92,18 +90,16 @@ func TestScopecheckQualifiedNames(t *testing.T) {
 	ast := parser.Parse(&src)
 	result := ScopecheckPass(&src, &ast, &handler)
 
-	namesSet := map[string]ID.Node{}
-	for i, n := range result.QualifiedNames {
-		name := string(n)
-		if _, has := namesSet[name]; has {
-			for k, v := range namesSet {
-				hexString := hex.EncodeToString([]byte(k))
-				fmt.Printf("%d - %x\n", v, hexString)
-			}
-			fmt.Println(u.FormatSExpr(ast.Dump(a.DumpShowNodeID)))
-			t.Fatalf("Name at node = %d have been already encountered at %d", i, namesSet[name])
+	namesSet := map[QualifiedName]ID.Node{}
+	for i, id := range result.QualifiedNames.GetDeclarations() {
+		name, has := result.QualifiedNames.GetNodeName(id)
+		if !has {
+			t.Fatalf("Seems like scopecheck failed entierly - found node name %s at %d that don't have declaration", name, id)
 		}
-		namesSet[name] = i
+		if _, has := namesSet[name]; has {
+			t.Fatalf("%s at node = %d have been already encountered at %d", name, i, namesSet[name])
+		}
+		namesSet[name] = id
 	}
 }
 
