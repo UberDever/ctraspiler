@@ -69,7 +69,7 @@ func runTest(lhs string, rhs string) error {
 	}
 
 	expected := u.MinifySExpr(utf8string.NewString(rhs).String())
-	result := ast.Dump()
+	result := ast.Dump(0)
 
 	if node, index, ok := isASTValid(ast.nodes); !ok {
 		return fmt.Errorf("AST nodes failed on validity test at %d => %v", index, node)
@@ -103,9 +103,9 @@ func TestParseFunctionDecl(t *testing.T) {
 	rhs := `
 		(Source
 			(FunctionDecl (main)
-				(Signature ()))
+				(Signature (ID[])))
 			(FunctionDecl (some)
-				(Signature (a b)
+				(Signature (ID[] (a) (b))
 				)))
 	`
 	if e := runTest(lhs, rhs); e != nil {
@@ -124,18 +124,18 @@ func TestParseConstDecl(t *testing.T) {
 	rhs := `
 	(Source
 		(FunctionDecl (main) 
-			(Signature ())
+			(Signature (ID[]))
 			(Block 
 				(ConstDecl 
-					(_) 
+					(ID[] (_)) 
 					(Expr[] (Expr (null)
 				)))
 				(ConstDecl 
-					(a b) 
+					(ID[] (a) (b)) 
 					(Expr[] (Expr (8)) (Expr (2))
 				))
 				(ConstDecl 
-					(c d e) 
+					(ID[] (c) (d) (e))
 					(Expr[] 
 						(Expr (* (8) (3)))
 						(Expr (- (16)))
@@ -160,9 +160,9 @@ func TestParseSomeExpressions(t *testing.T) {
 	rhs := `
 	(Source
 		(FunctionDecl (main)
-			(Signature ())
+			(Signature (ID[]))
 			(Block 
-				(ConstDecl (x) (Expr[] (Expr (8))))
+				(ConstDecl (ID[] (x)) (Expr[] (Expr (8))))
 				(Expr (+ (* (x) (8)) (3)))
 				(Expr (+ (x) (/ (3) (4))))
 				(Expr (Call (f) 
@@ -186,7 +186,7 @@ func TestReturnStmt(t *testing.T) {
 	rhs := `
 	(Source
 		(FunctionDecl (main)
-			(Signature ())
+			(Signature (ID[]))
 			(Block 
 				(Return (Expr[] (Expr (0)
 	))))))`
@@ -216,7 +216,7 @@ func TestSExprFormatting(t *testing.T) {
 		errs := handler.AllErrors()
 		t.Error(strings.Join(errs, " "))
 	}
-	dump := ast.Dump()
+	dump := ast.Dump(0)
 	formatted := u.FormatSExpr(dump)
 	unformatted := u.MinifySExpr(formatted)
 	if dump != unformatted {

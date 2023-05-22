@@ -969,12 +969,7 @@ func IdentifierList_Children(ast AST, i ID.Node) []ID.Node {
 }
 
 func IdentifierList_String(ast AST, i ID.Node) string {
-	ids := IdentifierList_Children(ast, i)
-	s := make([]string, 0, len(ids))
-	for _, i := range ids {
-		s = append(s, Identifier_String(ast, i))
-	}
-	return strings.Join(s, " ")
+	return "ID[]"
 }
 
 type ExpressionList struct {
@@ -1208,15 +1203,23 @@ func (ast *AST) traverseNodePostorder(onEnter NodeAction, onExit NodeAction, i I
 	onExit(ast, i)
 }
 
-func (ast *AST) Dump() string {
-	str := strings.Builder{}
-	onEnter := func(ast *AST, i ID.Node) (stopTraversal bool) {
-		str.WriteByte('(')
-		str.WriteString(ast.GetNodeString(i))
+// NOTE: For dumping and testing purposes it is plausable to have two
+// different representations of an AST - full one and dump one
+// I didn't account for that, so will stick with the flags to augment output
+const (
+	DumpPlain = 1 << iota
+	DumpShowNodeID
+)
 
-		// filter nodes that are composite by themselves
-		n := ast.nodes[i]
-		stopTraversal = n.tag == ID.NodeIdentifierList
+func (ast *AST) Dump(flags int) string {
+	str := strings.Builder{}
+	onEnter := func(ast *AST, id ID.Node) (stopTraversal bool) {
+		str.WriteByte('(')
+		str.WriteString(ast.GetNodeString(id))
+
+		if (flags & DumpShowNodeID) > 0 {
+			str.WriteString(fmt.Sprintf(":%d", id))
+		}
 		return
 	}
 	onExit := func(ast *AST, i ID.Node) (stopTraversal bool) {
@@ -1245,13 +1248,15 @@ func (ast TypedAST) GetNodeType(i ID.Node) ID.Type {
 	return ast.repo.NodeType(i)
 }
 
+// NOTE: This operation is overloaded in a sense that it adds no additional behaviour, just
+// more information. Therefore, it is reasonable to make this not plain procedure,
+// but extention point (handler) for original plain AST
+// that way we can build up augmented AST more and more without much copypaste
+// how to do this succinctly is another story
 func (ast *TypedAST) Dump() string {
 	str := strings.Builder{}
 	onEnter := func(_ *AST, id ID.Node) (stopTraversal bool) {
 		str.WriteByte('(')
-		if n := ast.GetNode(id); n.Tag() == ID.NodeIdentifierList {
-			return
-		}
 
 		str.WriteString(ast.GetNodeString(id))
 		str.WriteString(fmt.Sprintf(":%d", id))
@@ -1261,8 +1266,6 @@ func (ast *TypedAST) Dump() string {
 			str.WriteString(ast.repo.GetString(found))
 			str.WriteByte('`')
 		}
-
-		// filter nodes that are composite by themselves
 
 		return
 	}

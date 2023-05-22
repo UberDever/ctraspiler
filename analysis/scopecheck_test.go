@@ -1,8 +1,11 @@
 package analysis
 
 import (
+	"encoding/hex"
 	"errors"
+	"fmt"
 	a "some/ast"
+	ID "some/domain"
 	s "some/syntax"
 	u "some/util"
 	"strings"
@@ -58,7 +61,7 @@ func TestScopecheckDeclarations(t *testing.T) {
 	}
 }
 
-func TestScopecheckUniqueNames(t *testing.T) {
+func TestScopecheckQualifiedNames(t *testing.T) {
 	code := `
 		fn main()
 		fn some(a, b) {
@@ -89,13 +92,18 @@ func TestScopecheckUniqueNames(t *testing.T) {
 	ast := parser.Parse(&src)
 	result := ScopecheckPass(&src, &ast, &handler)
 
-	namesSet := map[string]any{}
+	namesSet := map[string]ID.Node{}
 	for i, n := range result.QualifiedNames {
 		name := string(n)
 		if _, has := namesSet[name]; has {
-			t.Fatalf("Key at node = %d have been already encountered", i)
+			for k, v := range namesSet {
+				hexString := hex.EncodeToString([]byte(k))
+				fmt.Printf("%d - %x\n", v, hexString)
+			}
+			fmt.Println(u.FormatSExpr(ast.Dump(a.DumpShowNodeID)))
+			t.Fatalf("Name at node = %d have been already encountered at %d", i, namesSet[name])
 		}
-		namesSet[name] = true
+		namesSet[name] = i
 	}
 }
 

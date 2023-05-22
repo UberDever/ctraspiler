@@ -175,17 +175,14 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 		case ID.NodeSource:
 			ctx.env.enterScope()
 			ctx.curParent = addDecl(i, false)
-			dump(ctx.env.declarations, " | ")
 
 		case ID.NodeFunctionDecl:
 			ctx.env.enterScope()
 			ctx.curParent = addDecl(i, false)
-			dump(ctx.env.declarations, " | ")
 
 		case ID.NodeBlock:
 			ctx.env.enterScope()
 			ctx.curParent = addDecl(i, false)
-			dump(ctx.env.declarations, " | ")
 
 		case ID.NodeExpression:
 			ctx.inUsageContext = true
@@ -218,16 +215,13 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 		n := ast.GetNode(i)
 		switch n.Tag() {
 		case ID.NodeSource:
-			dump(ctx.env.declarations, " | ")
 			ctx.env.exitScope()
 
 		case ID.NodeFunctionDecl:
-			dump(ctx.env.declarations, " | ")
 			ctx.curParent = ctx.env.get(ctx.curParent).parent
 			ctx.env.exitScope()
 
 		case ID.NodeBlock:
-			dump(ctx.env.declarations, " | ")
 			ctx.curParent = ctx.env.get(ctx.curParent).parent
 			ctx.env.exitScope()
 
@@ -238,6 +232,8 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 	}
 
 	ast.TraversePreorder(onEnter, onExit)
+
+	dump(ctx.env.declarations, "\n")
 
 	qualifiedNames := make(map[ID.Node]QualifiedName)
 	for i, d := range ctx.env.declarations {

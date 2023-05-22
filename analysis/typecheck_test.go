@@ -35,7 +35,7 @@ func runTypecheck(lhs string, pattern string) error {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
-	fmt.Println(u.FormatSExpr(ast.Dump()))
+	fmt.Println(u.FormatSExpr(ast.Dump(0)))
 
 	scopeCheck := ScopecheckPass(&src, &ast, &handler)
 	if !handler.Empty() {
