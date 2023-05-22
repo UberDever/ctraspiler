@@ -4,7 +4,7 @@ import (
 	a "some/ast"
 	ID "some/domain"
 	s "some/syntax"
-	. "some/typesystem"
+	T "some/typesystem"
 	u "some/util"
 )
 
@@ -12,7 +12,7 @@ import (
 // they are exaustive, but only at runtime - this is just garbage
 
 type typeCheckContext struct {
-	repo                TypeRepo
+	repo                T.TypeRepo
 	evaluationStack     []ID.Type
 	seenIdentifierTypes map[string]ID.Type
 	unificationSet      u.DisjointSet
@@ -20,7 +20,7 @@ type typeCheckContext struct {
 
 func newTypeCheckContext() typeCheckContext {
 	return typeCheckContext{
-		repo:                NewTypeRepo(),
+		repo:                T.NewTypeRepo(),
 		evaluationStack:     make([]ID.Type, 0, 64),
 		seenIdentifierTypes: make(map[string]ID.Type),
 		unificationSet:      u.NewDisjointSet(),
@@ -45,7 +45,7 @@ func (c *typeCheckContext) popType() ID.Type {
 }
 
 func (c typeCheckContext) result(ast *a.AST) a.TypedAST {
-	repo := NewTypeRepo()
+	repo := T.NewTypeRepo()
 	for id := 0; id < c.repo.Count(); id++ {
 		originalT := c.repo.GetType(ID.Type(id))
 		// if originalT.Node == ID.NodeInvalid {
