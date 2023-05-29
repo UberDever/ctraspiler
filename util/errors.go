@@ -23,6 +23,7 @@ const (
 	EP_ExpectedToken errorCode = iota
 	EP_ExpectedSemicolon
 	ES_ScopecheckFailed
+	ES_TypeinferenceFailed
 )
 
 var templates = [...][]string{
@@ -35,7 +36,8 @@ var templates = [...][]string{
 	},
 	Ast: {},
 	Semantic: {
-		ES_ScopecheckFailed: "\nLookup for identifier %s failed",
+		ES_ScopecheckFailed:    "\nLookup for identifier %s failed",
+		ES_TypeinferenceFailed: "\nUnification failed: %s != %s on node %d",
 	},
 }
 

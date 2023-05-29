@@ -13,6 +13,9 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
+// TODO: This `runSomething` helper should be devided into several procedurals
+// for better reusability
+
 // NOTE: more proper way to write typecheck tests would be
 // matching result of type inference with actually typed (by hand) code
 // but I don't implemented it in grammar and furher(
@@ -61,6 +64,43 @@ func runTypecheck(lhs string, pattern string) error {
 	fmt.Println(u.FormatSExpr(tAst.Dump()))
 
 	return nil
+}
+
+func TestTypecheckFail(t *testing.T) {
+	code := `
+		fn main() {
+			const a = true + 5
+		}
+	`
+	text := utf8string.NewString(code)
+	src := s.NewSource("typing_test", *text)
+
+	handler := u.NewHandler()
+	tokenizer := s.NewTokenizer(&handler)
+	tokenizer.Tokenize(&src)
+	if !handler.Empty() {
+		t.Fatalf(strings.Join(handler.AllErrors(), ""))
+	}
+
+	parser := a.NewParser(&handler)
+	ast := parser.Parse(&src)
+	if !handler.Empty() {
+		t.Fatalf(strings.Join(handler.AllErrors(), ""))
+	}
+	fmt.Println(u.FormatSExpr(ast.Dump(0)))
+
+	scopeCheck := ScopecheckPass(&src, &ast, &handler)
+	if !handler.Empty() {
+		t.Fatalf(strings.Join(handler.AllErrors(), ""))
+	}
+
+	_ = TypeCheckPass(scopeCheck, &src, &ast, &handler)
+	if !handler.Empty() {
+
+	} else {
+		t.Fatalf("Expected fail on the typecheck")
+	}
+
 }
 
 func TestSimpleTypecheck(t *testing.T) {

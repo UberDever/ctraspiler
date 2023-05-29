@@ -91,8 +91,12 @@ func (c *typeCheckContext) unify(id1, id2 ID.Type) bool {
 				if types1.Done() || types2.Done() {
 					break
 				}
-				c.unify(sub1, sub2)
+				if !c.unify(sub1, sub2) {
+					return false
+				}
 			}
+		} else /* Type inference failed */ {
+			return false
 		}
 	}
 	return true
@@ -119,6 +123,25 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 	}
 	_ = addFunctionType
 
+	tryUnify := func(node ID.Node, t1, t2 ID.Type) bool {
+		result := ctx.unify(t1, t2)
+		if !result {
+			line, col := src.Location(ast.GetNode(node).Token())
+			s1 := ctx.repo.GetString(t1)
+			s2 := ctx.repo.GetString(t2)
+			handler.Add(
+				u.NewError(u.Semantic,
+					u.ES_TypeinferenceFailed,
+					line,
+					col,
+					src.Filename(),
+					s1,
+					s2,
+					node))
+		}
+		return result
+	}
+
 	onEnter := func(ast *a.AST, id ID.Node) (shouldStop bool) {
 		n := ast.GetNode(id)
 
@@ -128,9 +151,11 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		case ID.NodeConstDecl:
 			fallthrough
 		case ID.NodeAssignment:
-			v := ctx.popType()
-			t := ctx.popType()
-			ctx.unify(t, v)
+			lhsT := ctx.popType()
+			rhsT := ctx.popType()
+			if !tryUnify(id, rhsT, lhsT) {
+				return
+			}
 			// no push type - statement
 		case ID.NodeOr:
 			fallthrough
@@ -151,9 +176,15 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			rhsT := ctx.popType()
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
-			ctx.unify(lhsT, rhsT)
-			ctx.unify(lhsT, v)
-			ctx.unify(lhsT, t)
+			if !tryUnify(id, lhsT, rhsT) {
+				return
+			}
+			if !tryUnify(id, lhsT, v) {
+				return
+			}
+			if !tryUnify(id, lhsT, t) {
+				return
+			}
 			ctx.pushType(v)
 		case ID.NodeBinaryMinus:
 			fallthrough
@@ -167,20 +198,28 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			lhsT := ctx.popType()
 			rhsT := ctx.popType()
 			v := addSimpleType(id, ID.TypeVar)
-			ctx.unify(lhsT, rhsT)
-			ctx.unify(lhsT, v)
+			if !tryUnify(id, lhsT, rhsT) {
+				return
+			}
+			if !tryUnify(id, lhsT, v) {
+				return
+			}
 			ctx.pushType(v)
 		case ID.NodeUnaryPlus:
 			fallthrough
 		case ID.NodeUnaryMinus:
 			v := ctx.popType()
 			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
-			ctx.unify(t, v)
+			if !tryUnify(id, t, v) {
+				return
+			}
 			ctx.pushType(v)
 		case ID.NodeNot:
 			v := ctx.popType()
 			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
-			ctx.unify(t, v)
+			if !tryUnify(id, t, v) {
+				return
+			}
 			ctx.pushType(v)
 		case ID.NodeIdentifier:
 			name, has := qualifiedNames.GetNodeName(id)
@@ -194,23 +233,31 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 				ctx.seenIdentifierTypes[string(name)] = v
 			} else {
 				v = addSimpleType(id, ID.TypeVar)
-				ctx.unify(seenT, v)
+				if !tryUnify(id, seenT, v) {
+					return
+				}
 			}
 			ctx.pushType(v)
 		case ID.NodeIntLiteral:
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
-			ctx.unify(t, v)
+			if !tryUnify(id, t, v) {
+				return
+			}
 			ctx.pushType(v)
 		case ID.NodeFloatLiteral:
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeFloat)
-			ctx.unify(t, v)
+			if !tryUnify(id, t, v) {
+				return
+			}
 			ctx.pushType(v)
 		case ID.NodeBoolLiteral:
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
-			ctx.unify(t, v)
+			if !tryUnify(id, t, v) {
+				return
+			}
 			ctx.pushType(v)
 		}
 		return

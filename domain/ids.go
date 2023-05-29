@@ -11,6 +11,8 @@ const (
 	TokenInvalid Token = math.MinInt
 )
 
+// NOTE: This was a bad idea - full mapping of tokens is better solution
+// i.e. increase granularity
 const (
 	TokenEOF          Token = -1
 	TokenKeyword            = antlr_parser.SomeKEYWORD

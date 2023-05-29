@@ -9,9 +9,6 @@ import (
 	antlr "github.com/antlr/antlr4/runtime/Go/antlr/v4"
 )
 
-// NOTE: This was a bad idea - full mapping of tokens is better solution
-// i.e. increase granularity
-
 type token struct {
 	Tag   ID.Token
 	Start int
