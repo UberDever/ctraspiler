@@ -224,6 +224,7 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 		}
 		fmt.Println("")
 	}
+	_ = dump
 
 	onEnter := func(ast *a.AST, i ID.Node) (shouldStop bool) {
 		n := ast.GetNode(i)
@@ -289,7 +290,7 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 
 	ast.TraversePreorder(onEnter, onExit)
 
-	dump(ctx.env.declarations, ctx.env.declUsages, "\n")
+	// dump(ctx.env.declarations, ctx.env.declUsages, "\n")
 	return ScopeCheckResult{
 		Ast:            ast,
 		QualifiedNames: NewQualifiedNames(&ctx),

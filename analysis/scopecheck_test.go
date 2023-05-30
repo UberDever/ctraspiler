@@ -19,20 +19,20 @@ func runScopecheck(code string) error {
 	handler := u.NewHandler()
 	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
 	parser := a.NewParser(&handler)
 	ast := parser.Parse(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
 	ScopecheckPass(&src, &ast, &handler)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}

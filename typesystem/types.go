@@ -90,16 +90,24 @@ func (r TypeRepo) IsTypeVariable(id ID.Type) bool {
 func (r TypeRepo) SameKind(id1, id2 ID.Type) bool {
 	t1 := r.GetType(id1)
 	t2 := r.GetType(id2)
-	if t1.Kind == ID.KindIdentity && t2.Kind == ID.KindIdentity {
+	switch t1.Kind {
+	case ID.KindIdentity:
+		if !r.IsTypeVariable(id1) && !r.IsTypeVariable(id2) {
+			return t1.lhs == t2.lhs
+		}
 		return true
-	} else if t1.Kind == ID.KindPtr && t2.Kind == ID.KindPtr {
-		return true
-	} else if t1.Kind == ID.KindFunction && t2.Kind == ID.KindFunction {
+	case ID.KindPtr:
+		return t2.Kind == ID.KindPtr
+	case ID.KindFunction:
 		argCount1 := r.Subtypes(id1).Count()
 		argCount2 := r.Subtypes(id2).Count()
-		return argCount1 == argCount2
+
+		sameKinds := t2.Kind == ID.KindFunction
+		sameKinds = sameKinds && (argCount1 == argCount2)
+		return sameKinds
+	default:
+		panic("this switch should be exaustive")
 	}
-	return false
 }
 
 func (r TypeRepo) GetString(id ID.Type) (s string) {

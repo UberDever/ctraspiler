@@ -54,7 +54,7 @@ func TestTokenizerTokens(t *testing.T) {
 		{ID.TokenTerminator, "\n"},
 	}
 
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		t.Error(strings.Join(errs, " "))
 	}
@@ -132,7 +132,7 @@ func TestTokenizerProgram(t *testing.T) {
 		{ID.TokenTerminator, "\n"},
 	}
 
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		t.Error(strings.Join(errs, " "))
 	}

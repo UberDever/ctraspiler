@@ -56,14 +56,14 @@ func runTest(lhs string, rhs string) error {
 	handler := u.NewHandler()
 	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
 	parser := NewParser(&handler)
 	ast := parser.Parse(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
@@ -205,14 +205,14 @@ func TestSExprFormatting(t *testing.T) {
 	handler := u.NewHandler()
 	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		t.Error(strings.Join(errs, " "))
 	}
 
 	parser := NewParser(&handler)
 	ast := parser.Parse(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		t.Error(strings.Join(errs, " "))
 	}

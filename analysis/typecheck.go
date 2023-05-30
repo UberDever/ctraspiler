@@ -88,7 +88,7 @@ func (c *typeCheckContext) unify(id1, id2 ID.Type) bool {
 					(!types1.Done() && types2.Done()) {
 					return false
 				}
-				if types1.Done() || types2.Done() {
+				if types1.Done() && types2.Done() {
 					break
 				}
 				if !c.unify(sub1, sub2) {
@@ -126,9 +126,11 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 	tryUnify := func(node ID.Node, t1, t2 ID.Type) bool {
 		result := ctx.unify(t1, t2)
 		if !result {
+			assumedT1 := ID.Type(ctx.unificationSet.Find(uint(t1)))
+			assumedT2 := ID.Type(ctx.unificationSet.Find(uint(t2)))
 			line, col := src.Location(ast.GetNode(node).Token())
-			s1 := ctx.repo.GetString(t1)
-			s2 := ctx.repo.GetString(t2)
+			s1 := ctx.repo.GetString(assumedT1)
+			s2 := ctx.repo.GetString(assumedT2)
 			handler.Add(
 				u.NewError(u.Semantic,
 					u.ES_TypeinferenceFailed,

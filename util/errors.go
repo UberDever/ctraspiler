@@ -88,7 +88,7 @@ func NewHandler() ErrorHandler {
 	return ErrorHandler{errors: make([]Error, 0)}
 }
 
-func (h ErrorHandler) Empty() bool {
+func (h ErrorHandler) IsEmpty() bool {
 	return len(h.errors) == 0
 }
 

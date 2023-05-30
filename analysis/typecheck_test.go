@@ -27,27 +27,28 @@ func runTypecheck(lhs string, pattern string) error {
 	handler := u.NewHandler()
 	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
 	parser := a.NewParser(&handler)
 	ast := parser.Parse(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
-	fmt.Println(u.FormatSExpr(ast.Dump(0)))
 
 	scopeCheck := ScopecheckPass(&src, &ast, &handler)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
 
 	tAst := TypeCheckPass(scopeCheck, &src, &ast, &handler)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
+		fmt.Println(u.FormatSExpr(ast.Dump(0)))
+		fmt.Println(u.FormatSExpr(tAst.Dump()))
 		errs := handler.AllErrors()
 		return errors.New(strings.Join(errs, ""))
 	}
@@ -55,13 +56,15 @@ func runTypecheck(lhs string, pattern string) error {
 	dump := tAst.Dump()
 	matched, err := regexp.Match(pattern, []byte(dump))
 	if err != nil {
+		fmt.Println(u.FormatSExpr(ast.Dump(0)))
+		fmt.Println(u.FormatSExpr(tAst.Dump()))
 		return errors.New("Failed to do regexp match")
 	}
 	if !matched {
+		fmt.Println(u.FormatSExpr(ast.Dump(0)))
+		fmt.Println(u.FormatSExpr(tAst.Dump()))
 		return fmt.Errorf("Can't match pattern %s, typecheck failed", pattern)
 	}
-
-	fmt.Println(u.FormatSExpr(tAst.Dump()))
 
 	return nil
 }
@@ -78,29 +81,32 @@ func TestTypecheckFail(t *testing.T) {
 	handler := u.NewHandler()
 	tokenizer := s.NewTokenizer(&handler)
 	tokenizer.Tokenize(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		t.Fatalf(strings.Join(handler.AllErrors(), ""))
 	}
 
 	parser := a.NewParser(&handler)
 	ast := parser.Parse(&src)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		t.Fatalf(strings.Join(handler.AllErrors(), ""))
 	}
-	fmt.Println(u.FormatSExpr(ast.Dump(0)))
 
 	scopeCheck := ScopecheckPass(&src, &ast, &handler)
-	if !handler.Empty() {
+	if !handler.IsEmpty() {
 		t.Fatalf(strings.Join(handler.AllErrors(), ""))
 	}
 
-	_ = TypeCheckPass(scopeCheck, &src, &ast, &handler)
-	if !handler.Empty() {
-
+	tAst := TypeCheckPass(scopeCheck, &src, &ast, &handler)
+	if !handler.IsEmpty() {
+		messages := handler.AllErrors()
+		if len(messages) != 1 {
+			t.Fatalf("Expected only one error")
+		}
 	} else {
+		fmt.Println(u.FormatSExpr(ast.Dump(a.DumpShowNodeID)))
+		fmt.Println(u.FormatSExpr(tAst.Dump()))
 		t.Fatalf("Expected fail on the typecheck")
 	}
-
 }
 
 func TestSimpleTypecheck(t *testing.T) {
@@ -127,6 +133,7 @@ func TestConstantsTypecheck(t *testing.T) {
 	for _, p := range patterns {
 		if e := runTypecheck(code, p); e != nil {
 			t.Error(e)
+			break
 		}
 	}
 }
@@ -143,6 +150,7 @@ func TestLogicalOpsTypecheck(t *testing.T) {
 	for _, p := range patterns {
 		if e := runTypecheck(code, p); e != nil {
 			t.Error(e)
+			break
 		}
 	}
 }
@@ -160,6 +168,7 @@ func TestVariableTypecheck(t *testing.T) {
 	for _, p := range patterns {
 		if e := runTypecheck(code, p); e != nil {
 			t.Error(e)
+			break
 		}
 	}
 }
