@@ -50,6 +50,7 @@ const (
 	NodeVarDecl
 	NodeAssignment
 	NodeReturnStmt
+	NodeIfStmt
 
 	NodeExpression
 	NodeSelector

@@ -13,56 +13,88 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
-// TODO: This `runSomething` helper should be devided into several procedurals
-// for better reusability
+type compiler struct {
+	src              s.Source
+	ast              a.AST
+	scopecheckResult ScopeCheckResult
+	tAst             a.TypedAST
+	handler          u.ErrorHandler
+}
+
+func newCompiler(code string) (c compiler) {
+	text := utf8string.NewString(code)
+	c.src = s.NewSource("typing_test", *text)
+	c.handler = u.NewHandler()
+	return
+}
+
+func (c *compiler) tokenize() error {
+	tokenizer := s.NewTokenizer(&c.handler)
+	tokenizer.Tokenize(&c.src)
+	if !c.handler.IsEmpty() {
+		errs := c.handler.AllErrors()
+		return errors.New(strings.Join(errs, ""))
+	}
+	return nil
+}
+
+func (c *compiler) parse() error {
+	parser := a.NewParser(&c.handler)
+	c.ast = parser.Parse(&c.src)
+	if !c.handler.IsEmpty() {
+		errs := c.handler.AllErrors()
+		return errors.New(strings.Join(errs, ""))
+	}
+	return nil
+}
+
+func (c *compiler) scopecheck() error {
+	c.scopecheckResult = ScopecheckPass(&c.src, &c.ast, &c.handler)
+	if !c.handler.IsEmpty() {
+		errs := c.handler.AllErrors()
+		return errors.New(strings.Join(errs, ""))
+	}
+	return nil
+}
+
+func (c *compiler) typecheck() error {
+	c.tAst = TypeCheckPass(c.scopecheckResult, &c.src, &c.ast, &c.handler)
+	if !c.handler.IsEmpty() {
+		errs := c.handler.AllErrors()
+		return errors.New(strings.Join(errs, ""))
+	}
+	return nil
+}
 
 // NOTE: more proper way to write typecheck tests would be
 // matching result of type inference with actually typed (by hand) code
 // but I don't implemented it in grammar and furher(
 
-func runTypecheck(lhs string, pattern string) error {
-	text := utf8string.NewString(lhs)
-	src := s.NewSource("typing_test", *text)
-
-	handler := u.NewHandler()
-	tokenizer := s.NewTokenizer(&handler)
-	tokenizer.Tokenize(&src)
-	if !handler.IsEmpty() {
-		errs := handler.AllErrors()
-		return errors.New(strings.Join(errs, ""))
+func runTypecheck(code string, pattern string) error {
+	c := newCompiler(code)
+	if err := c.tokenize(); err != nil {
+		return err
 	}
-
-	parser := a.NewParser(&handler)
-	ast := parser.Parse(&src)
-	if !handler.IsEmpty() {
-		errs := handler.AllErrors()
-		return errors.New(strings.Join(errs, ""))
+	if err := c.parse(); err != nil {
+		return err
 	}
-
-	scopeCheck := ScopecheckPass(&src, &ast, &handler)
-	if !handler.IsEmpty() {
-		errs := handler.AllErrors()
-		return errors.New(strings.Join(errs, ""))
+	if err := c.scopecheck(); err != nil {
+		return err
 	}
-
-	tAst := TypeCheckPass(scopeCheck, &src, &ast, &handler)
-	if !handler.IsEmpty() {
-		fmt.Println(u.FormatSExpr(ast.Dump(0)))
-		fmt.Println(u.FormatSExpr(tAst.Dump()))
-		errs := handler.AllErrors()
-		return errors.New(strings.Join(errs, ""))
+	if err := c.typecheck(); err != nil {
+		return err
 	}
-
-	dump := tAst.Dump()
-	matched, err := regexp.Match(pattern, []byte(dump))
+	astDump := c.ast.Dump(a.DumpShowNodeID)
+	tAstDump := c.tAst.Dump()
+	matched, err := regexp.Match(pattern, []byte(tAstDump))
 	if err != nil {
-		fmt.Println(u.FormatSExpr(ast.Dump(0)))
-		fmt.Println(u.FormatSExpr(tAst.Dump()))
+		fmt.Println(u.FormatSExpr(astDump))
+		fmt.Println(u.FormatSExpr(tAstDump))
 		return errors.New("Failed to do regexp match")
 	}
 	if !matched {
-		fmt.Println(u.FormatSExpr(ast.Dump(0)))
-		fmt.Println(u.FormatSExpr(tAst.Dump()))
+		fmt.Println(u.FormatSExpr(astDump))
+		fmt.Println(u.FormatSExpr(tAstDump))
 		return fmt.Errorf("Can't match pattern %s, typecheck failed", pattern)
 	}
 
@@ -75,36 +107,24 @@ func TestTypecheckFail(t *testing.T) {
 			const a = true + 5
 		}
 	`
-	text := utf8string.NewString(code)
-	src := s.NewSource("typing_test", *text)
-
-	handler := u.NewHandler()
-	tokenizer := s.NewTokenizer(&handler)
-	tokenizer.Tokenize(&src)
-	if !handler.IsEmpty() {
-		t.Fatalf(strings.Join(handler.AllErrors(), ""))
+	c := newCompiler(code)
+	if err := c.tokenize(); err != nil {
+		t.Fatal(err)
 	}
-
-	parser := a.NewParser(&handler)
-	ast := parser.Parse(&src)
-	if !handler.IsEmpty() {
-		t.Fatalf(strings.Join(handler.AllErrors(), ""))
+	if err := c.parse(); err != nil {
+		t.Fatal(err)
 	}
-
-	scopeCheck := ScopecheckPass(&src, &ast, &handler)
-	if !handler.IsEmpty() {
-		t.Fatalf(strings.Join(handler.AllErrors(), ""))
+	if err := c.scopecheck(); err != nil {
+		t.Fatal(err)
 	}
-
-	tAst := TypeCheckPass(scopeCheck, &src, &ast, &handler)
-	if !handler.IsEmpty() {
-		messages := handler.AllErrors()
+	if err := c.typecheck(); err != nil {
+		messages := c.handler.AllErrors()
 		if len(messages) != 1 {
 			t.Fatalf("Expected only one error")
 		}
 	} else {
-		fmt.Println(u.FormatSExpr(ast.Dump(a.DumpShowNodeID)))
-		fmt.Println(u.FormatSExpr(tAst.Dump()))
+		fmt.Println(u.FormatSExpr(c.ast.Dump(a.DumpShowNodeID)))
+		fmt.Println(u.FormatSExpr(c.tAst.Dump()))
 		t.Fatalf("Expected fail on the typecheck")
 	}
 }
@@ -165,6 +185,36 @@ func TestVariableTypecheck(t *testing.T) {
 		}
 	`
 	patterns := []string{"a.*`bool`", "b.*`bool`", "c.*`bool`", "d.*`float`"}
+	for _, p := range patterns {
+		if e := runTypecheck(code, p); e != nil {
+			t.Error(e)
+			break
+		}
+	}
+}
+
+func TestFunctionTypecheck(t *testing.T) {
+	code := `
+	 	fn unary(a) {
+			return -a
+		}
+
+		fn some(f, a, b) {
+			if a == b {
+				return f(-1)
+			}
+			return f(1)
+		}
+		
+		fn main() {
+			return some(unary, true, false)
+		}
+	`
+	patterns := []string{
+		"unary.*`(FN int int)`",
+		"some.*`(FN (FN int int) bool bool)`",
+		"main.*`(FN int)`",
+	}
 	for _, p := range patterns {
 		if e := runTypecheck(code, p); e != nil {
 			t.Error(e)

@@ -9,10 +9,10 @@ KEYWORD
 	: 'fn'
 	| 'const'
 	| 'var'
+	| 'if'
 	| 'break'
 	| 'return'
 	;
-
 
 /// OPERATORS
 
@@ -183,7 +183,6 @@ fragment INTERPRETED_STRING_LIT
 IDENTIFIER
 	: LETTER (LETTER | UNICODE_DIGIT)*
 	;
-
 
 /// BASIC
 

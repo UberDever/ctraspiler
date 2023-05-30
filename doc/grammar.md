@@ -23,6 +23,7 @@ Block:
 
 Statement:
     EmptyStmt
+    | IfStmt
     | ReturnStmt
     | Block
     | ExpressionStmt
@@ -31,6 +32,9 @@ Statement:
     | ConstDecl .
 
 EmptyStmt: .
+
+IfStmt:
+    "if" Expression Block .
 
 ReturnStmt: 
     "return" ExpressionList .

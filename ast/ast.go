@@ -26,6 +26,7 @@ var NodeConstructor = [...]func(ID.Token, ID.Node, ID.Node) Node{
 	ID.NodeVarDecl:      NewVarDecl,
 	ID.NodeAssignment:   NewAssignment,
 	ID.NodeReturnStmt:   NewReturnStmt,
+	ID.NodeIfStmt:       NewIfStmt,
 
 	ID.NodeExpression: NewExpression,
 	ID.NodeSelector:   NewSelector,
@@ -68,6 +69,7 @@ var NodeString = [...]func(AST, ID.Node) string{
 	ID.NodeVarDecl:      VarDecl_String,
 	ID.NodeAssignment:   Assignment_String,
 	ID.NodeReturnStmt:   ReturnStmt_String,
+	ID.NodeIfStmt:       IfStmt_String,
 
 	ID.NodeExpression: Expression_String,
 	ID.NodeSelector:   Selector_String,
@@ -110,6 +112,7 @@ var NodeChildren = [...]func(AST, ID.Node) []ID.Node{
 	ID.NodeVarDecl:      VarDecl_Children,
 	ID.NodeAssignment:   Assignment_Children,
 	ID.NodeReturnStmt:   ReturnStmt_Children,
+	ID.NodeIfStmt:       IfStmt_Children,
 
 	ID.NodeExpression: Expression_Children,
 	ID.NodeSelector:   Selector_Children,
@@ -426,6 +429,36 @@ func ReturnStmt_Children(ast AST, i ID.Node) []ID.Node {
 
 func ReturnStmt_String(ast AST, i ID.Node) string {
 	return "Return"
+}
+
+type IfStmt struct {
+	Expression ID.Node
+	Block      ID.Node
+}
+
+func (ast AST) IfStmt(n Node) IfStmt {
+	return IfStmt{
+		Expression: n.lhs,
+		Block:      n.rhs,
+	}
+}
+
+func NewIfStmt(tokenIdx ID.Token, expression ID.Node, block ID.Node) Node {
+	return Node{
+		tag:      ID.NodeIfStmt,
+		tokenIdx: tokenIdx,
+		lhs:      expression,
+		rhs:      block,
+	}
+}
+
+func IfStmt_Children(ast AST, i ID.Node) []ID.Node {
+	n := ast.IfStmt(ast.nodes[i])
+	return []ID.Node{n.Expression, n.Block}
+}
+
+func IfStmt_String(ast AST, i ID.Node) string {
+	return "If"
 }
 
 type Expression struct {

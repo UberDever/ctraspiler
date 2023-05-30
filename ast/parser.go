@@ -306,6 +306,8 @@ func (p *parser) parseStatement() ID.Node {
 		return p.parseVarDecl()
 	} else if p.matchToken(ID.TokenKeyword, "return") {
 		return p.parseReturnStmt()
+	} else if p.matchToken(ID.TokenKeyword, "if") {
+		return p.parseIfStmt()
 	} else if p.matchToken(ID.TokenPunctuation, "{") {
 		return p.parseBlock()
 	} else {
@@ -324,6 +326,20 @@ func (p *parser) parseStatement() ID.Node {
 		p.rollback()
 		return p.parseAssignment()
 	}
+}
+
+func (p *parser) parseIfStmt() ID.Node {
+	tag, tokenIdx, lhs, rhs := ID.NodeIfStmt, ID.TokenInvalid, ID.NodeInvalid, ID.NodeInvalid
+	tokenIdx = p.current
+
+	ok := p.expect(ID.TokenKeyword, "if")
+	if !ok {
+		return ID.NodeInvalid
+	}
+	lhs = p.parseExpression()
+	rhs = p.parseBlock()
+
+	return p.ast.AddNode(NodeConstructor[tag](tokenIdx, lhs, rhs))
 }
 
 func (p *parser) parseReturnStmt() ID.Node {
