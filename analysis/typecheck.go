@@ -1,7 +1,6 @@
 package analysis
 
 import (
-	"fmt"
 	a "some/ast"
 	ID "some/domain"
 	s "some/syntax"
@@ -40,6 +39,9 @@ func (c *typeCheckContext) pushType(t ID.Type) {
 }
 
 func (c *typeCheckContext) popType() ID.Type {
+	if len(c.evaluationStack) == 0 {
+		return ID.TypeInvalid
+	}
 	t := c.evaluationStack[len(c.evaluationStack)-1]
 	c.evaluationStack = c.evaluationStack[:len(c.evaluationStack)-1]
 	return t
@@ -150,8 +152,23 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 
 		switch n.Tag() {
 		case ID.NodeFunctionDecl:
-			f := ast.FunctionDecl(n)
-			fmt.Printf("Function %d %s\n", id, ast.GetNodeString(f.Name))
+			firstReturnT := ctx.popType()
+			if firstReturnT == ID.TypeInvalid {
+				panic("This shouldn't have happened, analysis of returns would've helped, but it's not implemented")
+			}
+			for {
+				returnT := ctx.popType()
+				node := ctx.repo.GetType(returnT).Node
+				if ast.GetNode(node).Tag() == ID.NodeReturnStmt {
+					ctx.unify(firstReturnT, returnT)
+				} else {
+					ctx.pushType(returnT)
+					break
+				}
+			}
+			//TODO: remove
+			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
+			ctx.unify(firstReturnT, t)
 		case ID.NodeVarDecl:
 			fallthrough
 		case ID.NodeConstDecl:
@@ -163,7 +180,8 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 				return
 			}
 		case ID.NodeReturnStmt:
-			fmt.Printf("Return %d\n", id)
+			v := addSimpleType(id, ID.TypeVar)
+			ctx.pushType(v)
 			// no push type - statement
 
 		case ID.NodeOr:
@@ -272,7 +290,7 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		return
 	}
 
-	onExit := func(ast *a.AST, i ID.Node) (shouldStop bool) {
+	onExit := func(ast *a.AST, id ID.Node) (shouldStop bool) {
 		return
 	}
 

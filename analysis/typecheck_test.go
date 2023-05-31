@@ -105,6 +105,7 @@ func TestTypecheckFail(t *testing.T) {
 	code := `
 		fn main() {
 			const a = true + 5
+			return 0
 		}
 	`
 	c := newCompiler(code)
@@ -133,6 +134,7 @@ func TestSimpleTypecheck(t *testing.T) {
 	code := `
 		fn main() {
 			const a = 5 + 2
+			return 0
 		}
 	`
 	pattern := "a.*`int`"
@@ -147,6 +149,7 @@ func TestConstantsTypecheck(t *testing.T) {
 			const a = 5 + 2
 			const b = a
 			const c = 4
+			return 0
 		}
 	`
 	patterns := []string{"a.*`int`", "b.*`int`", "c.*`int`"}
@@ -164,6 +167,7 @@ func TestLogicalOpsTypecheck(t *testing.T) {
 			const a = true || false
 			const b = !a
 			const c = b && !b
+			return 0
 		}
 	`
 	patterns := []string{"a.*`bool`", "b.*`bool`", "c.*`bool`"}
@@ -182,6 +186,7 @@ func TestVariableTypecheck(t *testing.T) {
 			var b = a
 			const c = a && b
 			var d = 5.2
+			return 0
 		}
 	`
 	patterns := []string{"a.*`bool`", "b.*`bool`", "c.*`bool`", "d.*`float`"}
