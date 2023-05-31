@@ -24,15 +24,20 @@ func NewTypeRepo() TypeRepo {
 	return r
 }
 
-func (r *TypeRepo) AddType(node ID.Node, kind ID.Kind, subtype ID.Type, rest ...ID.Type) ID.Type {
-	lhs := subtype
+func (r *TypeRepo) AddType(node ID.Node, kind ID.Kind, subtypes ...ID.Type) ID.Type {
+	lhs := ID.TypeInvalid
 	rhs := ID.TypeInvalid
-	if len(rest) == 1 {
-		rhs = rest[0]
-	} else if len(rest) > 1 {
-		r.extraData = append(r.extraData, rest...)
-		lhs = ID.Type(len(r.extraData) - len(rest))
+	switch kind {
+	case ID.KindIdentity:
+		fallthrough
+	case ID.KindPtr:
+		lhs = subtypes[0]
+	case ID.KindFunction:
+		r.extraData = append(r.extraData, subtypes...)
+		lhs = ID.Type(len(r.extraData) - len(subtypes))
 		rhs = ID.Type(len(r.extraData))
+	default:
+		panic("this switch should be exaustive")
 	}
 	t := nodeType{
 		Node: node,
@@ -62,7 +67,7 @@ func (r TypeRepo) Count() int {
 }
 
 func (r TypeRepo) Subtypes(id ID.Type) typeIterator {
-	return newTypeIterator(r.GetType(id))
+	return newTypeIterator(r.GetType(id), r.extraData)
 }
 
 func (r TypeRepo) IsTypeVariable(id ID.Type) bool {
@@ -186,18 +191,19 @@ func (r TypeRepo) GetString(id ID.Type) (s string) {
 
 type typeIterator struct {
 	nodeType
-	curExtra ID.Type
+	extraData    []ID.Type
+	subtypeIndex ID.Type
 }
 
-func newTypeIterator(t nodeType) typeIterator {
-	it := typeIterator{t, ID.TypeInvalid}
+func newTypeIterator(t nodeType, extraData []ID.Type) typeIterator {
+	it := typeIterator{t, extraData, ID.TypeInvalid}
 	switch t.Kind {
 	case ID.KindIdentity:
 		fallthrough
 	case ID.KindPtr:
 		fallthrough
 	case ID.KindFunction:
-		it.curExtra = it.lhs
+		it.subtypeIndex = it.lhs
 	default:
 		panic("this switch should be exaustive")
 	}
@@ -205,7 +211,7 @@ func newTypeIterator(t nodeType) typeIterator {
 }
 
 func (i typeIterator) Done() bool {
-	return i.curExtra == ID.TypeInvalid
+	return i.subtypeIndex == ID.TypeInvalid
 }
 
 func (i typeIterator) Count() int {
@@ -222,17 +228,18 @@ func (i typeIterator) Count() int {
 }
 
 func (i *typeIterator) Next() ID.Type {
-	e := i.curExtra
+	e := i.subtypeIndex
 	switch i.Kind {
 	case ID.KindIdentity:
 		fallthrough
 	case ID.KindPtr:
-		i.curExtra = ID.TypeInvalid
+		i.subtypeIndex = ID.TypeInvalid
 	case ID.KindFunction:
-		if i.curExtra >= i.rhs {
-			return ID.TypeInvalid
+		e = i.extraData[i.subtypeIndex]
+		i.subtypeIndex++
+		if i.subtypeIndex >= i.rhs {
+			i.subtypeIndex = ID.TypeInvalid
 		}
-		i.curExtra++
 	default:
 		panic("this switch should be exaustive")
 	}

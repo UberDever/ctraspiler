@@ -1254,6 +1254,10 @@ func (ast AST) GetNode(i ID.Node) Node {
 	return ast.nodes[i]
 }
 
+func (ast AST) NodeCount() int {
+	return len(ast.nodes)
+}
+
 func (ast AST) GetNodeString(i ID.Node) string {
 	n := ast.nodes[i]
 	getString := NodeString[n.tag]
@@ -1308,6 +1312,7 @@ func (ast *AST) traverseNodePostorder(onEnter NodeAction, onExit NodeAction, i I
 const (
 	DumpPlain = 1 << iota
 	DumpShowNodeID
+	DumpPostOrder
 )
 
 func (ast *AST) Dump(flags int) string {
@@ -1325,7 +1330,11 @@ func (ast *AST) Dump(flags int) string {
 		str.WriteByte(')')
 		return false
 	}
-	ast.TraversePreorder(onEnter, onExit)
+	if (flags & DumpPostOrder) > 0 {
+		ast.TraversePostorder(onEnter, onExit)
+	} else {
+		ast.TraversePreorder(onEnter, onExit)
+	}
 
 	return str.String()
 }

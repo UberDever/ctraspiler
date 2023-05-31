@@ -11,19 +11,23 @@ import (
 // NOTE: This code is an example of bad non-exaustive switches
 // they are exaustive, but only at runtime - this is just garbage
 
+// TODO: add stack for returns, since it is control structure
 type typeCheckContext struct {
 	repo                T.TypeRepo
-	evaluationStack     []ID.Type
+	evaluationStack     u.Stack[ID.Type]
+	returnStack         u.Stack[ID.Type]
 	seenIdentifierTypes map[string]ID.Type
 	unificationSet      u.DisjointSet
+	inUsageContext      bool
 }
 
 func newTypeCheckContext() typeCheckContext {
 	return typeCheckContext{
 		repo:                T.NewTypeRepo(),
-		evaluationStack:     make([]ID.Type, 0, 64),
+		evaluationStack:     u.NewStack[ID.Type](),
 		seenIdentifierTypes: make(map[string]ID.Type),
 		unificationSet:      u.NewDisjointSet(),
+		inUsageContext:      false,
 	}
 }
 
@@ -32,19 +36,6 @@ func (c *typeCheckContext) makeSet(id ID.Type) {
 		panic("Something went horribly wrong")
 	}
 	c.unificationSet.MakeSet(uint(id))
-}
-
-func (c *typeCheckContext) pushType(t ID.Type) {
-	c.evaluationStack = append(c.evaluationStack, t)
-}
-
-func (c *typeCheckContext) popType() ID.Type {
-	if len(c.evaluationStack) == 0 {
-		return ID.TypeInvalid
-	}
-	t := c.evaluationStack[len(c.evaluationStack)-1]
-	c.evaluationStack = c.evaluationStack[:len(c.evaluationStack)-1]
-	return t
 }
 
 func (c typeCheckContext) result(ast *a.AST) a.TypedAST {
@@ -62,7 +53,7 @@ func (c typeCheckContext) result(ast *a.AST) a.TypedAST {
 		for !it.Done() {
 			subtypes = append(subtypes, it.Next())
 		}
-		repo.AddType(originalT.Node, actualT.Kind, subtypes[0], subtypes[1:]...)
+		repo.AddType(originalT.Node, actualT.Kind, subtypes...)
 	}
 
 	return a.NewTypedAST(ast, repo)
@@ -116,11 +107,8 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		return t
 	}
 
-	addFunctionType := func(node ID.Node, id ...ID.Type) ID.Type {
-		if len(id) < 1 {
-			panic("Something went horribly wrong")
-		}
-		t := ctx.repo.AddType(node, ID.KindIdentity, id[0], id[1:]...)
+	addFunctionType := func(node ID.Node, rest ...ID.Type) ID.Type {
+		t := ctx.repo.AddType(node, ID.KindFunction, rest...)
 		ctx.makeSet(t)
 		return t
 	}
@@ -152,37 +140,53 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 
 		switch n.Tag() {
 		case ID.NodeFunctionDecl:
-			firstReturnT := ctx.popType()
-			if firstReturnT == ID.TypeInvalid {
-				panic("This shouldn't have happened, analysis of returns would've helped, but it's not implemented")
-			}
+			// TODO: we should handle returns, parameters and name here
+			identifierTs := make([]ID.Type, 0, 16)
 			for {
-				returnT := ctx.popType()
-				node := ctx.repo.GetType(returnT).Node
-				if ast.GetNode(node).Tag() == ID.NodeReturnStmt {
-					ctx.unify(firstReturnT, returnT)
-				} else {
-					ctx.pushType(returnT)
+				identifierT, ok := ctx.evaluationStack.Pop()
+				if !ok {
 					break
 				}
+				node := ctx.repo.GetType(identifierT).Node
+				if ast.GetNode(node).Tag() != ID.NodeIdentifier {
+					ctx.evaluationStack.Push(identifierT)
+					break
+				}
+				identifierTs = append(identifierTs, identifierT)
 			}
+			if len(identifierTs) == 0 {
+				panic("Excepted at least function type here")
+			}
+			paramTs := identifierTs[1:]
+			returnT := addSimpleType(ID.NodeInvalid, ID.TypeVar)
+			for !ctx.returnStack.IsEmpty() {
+				retT, _ := ctx.returnStack.Pop()
+				if !tryUnify(id, retT, returnT) {
+					return
+				}
+			}
+			signatureT := append(paramTs, returnT)
+			fnT := identifierTs[0]
+			t := addFunctionType(ctx.repo.GetType(fnT).Node, signatureT...)
+			ctx.unify(fnT, t)
 			//TODO: remove
-			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
-			ctx.unify(firstReturnT, t)
+			// t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
+			// ctx.unify(firstReturnT, t)
 		case ID.NodeVarDecl:
 			fallthrough
 		case ID.NodeConstDecl:
 			fallthrough
 		case ID.NodeAssignment:
-			lhsT := ctx.popType()
-			rhsT := ctx.popType()
+			lhsT, _ := ctx.evaluationStack.Pop()
+			rhsT, _ := ctx.evaluationStack.Pop()
 			if !tryUnify(id, rhsT, lhsT) {
 				return
 			}
 		case ID.NodeReturnStmt:
-			v := addSimpleType(id, ID.TypeVar)
-			ctx.pushType(v)
-			// no push type - statement
+			exprT, _ := ctx.evaluationStack.Pop()
+			returnT := addSimpleType(id, ID.TypeVar)
+			ctx.unify(returnT, exprT)
+			ctx.returnStack.Push(returnT)
 
 		case ID.NodeOr:
 			fallthrough
@@ -199,8 +203,8 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		case ID.NodeGreaterThanEquals:
 			fallthrough
 		case ID.NodeLessThanEquals:
-			lhsT := ctx.popType()
-			rhsT := ctx.popType()
+			lhsT, _ := ctx.evaluationStack.Pop()
+			rhsT, _ := ctx.evaluationStack.Pop()
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
 			if !tryUnify(id, lhsT, rhsT) {
@@ -212,7 +216,7 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			if !tryUnify(id, lhsT, t) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeBinaryMinus:
 			fallthrough
 		case ID.NodeMultiply:
@@ -222,8 +226,8 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		// TODO: In this case binary plus `adds` all types together, however, I need only
 		// int, float, string
 		case ID.NodeBinaryPlus:
-			lhsT := ctx.popType()
-			rhsT := ctx.popType()
+			lhsT, _ := ctx.evaluationStack.Pop()
+			rhsT, _ := ctx.evaluationStack.Pop()
 			v := addSimpleType(id, ID.TypeVar)
 			if !tryUnify(id, lhsT, rhsT) {
 				return
@@ -231,23 +235,23 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			if !tryUnify(id, lhsT, v) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeUnaryPlus:
 			fallthrough
 		case ID.NodeUnaryMinus:
-			v := ctx.popType()
+			v, _ := ctx.evaluationStack.Pop()
 			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
 			if !tryUnify(id, t, v) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeNot:
-			v := ctx.popType()
+			v, _ := ctx.evaluationStack.Pop()
 			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
 			if !tryUnify(id, t, v) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeIdentifier:
 			name, has := qualifiedNames.GetNodeName(id)
 			if !has {
@@ -259,39 +263,71 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 				v = addSimpleType(id, ID.TypeVar)
 				ctx.seenIdentifierTypes[string(name)] = v
 			} else {
-				v = addSimpleType(id, ID.TypeVar)
-				if !tryUnify(id, seenT, v) {
-					return
-				}
+				v = seenT
+				// v = addSimpleType(id, ID.TypeVar)
+				// if !tryUnify(id, seenT, v) {
+				// 	return
+				// }
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeIntLiteral:
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeInt)
 			if !tryUnify(id, t, v) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeFloatLiteral:
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeFloat)
 			if !tryUnify(id, t, v) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
 		case ID.NodeBoolLiteral:
 			v := addSimpleType(id, ID.TypeVar)
 			t := addSimpleType(ID.NodeInvalid, ID.TypeBool)
 			if !tryUnify(id, t, v) {
 				return
 			}
-			ctx.pushType(v)
+			ctx.evaluationStack.Push(v)
+		case ID.NodeExpression:
+			exprT := addSimpleType(id, ID.TypeVar)
+			t, _ := ctx.evaluationStack.Pop()
+			ctx.unify(exprT, t)
+			ctx.evaluationStack.Push(exprT)
+			ctx.inUsageContext = true
 		}
 		return
 	}
 
 	onExit := func(ast *a.AST, id ID.Node) (shouldStop bool) {
+		n := ast.GetNode(id)
+		switch n.Tag() {
+		case ID.NodeExpression:
+			ctx.inUsageContext = false
+		}
 		return
+	}
+
+	// main : () -> int
+	for i := 0; i < ast.NodeCount(); i++ {
+		id := ID.Node(i)
+		n := ast.GetNode(id)
+		if n.Tag() == ID.NodeFunctionDecl {
+			nameId := ast.FunctionDecl(n).Name
+
+			if a.Identifier_String(*ast, nameId) == "main" {
+				name, has := qualifiedNames.GetNodeName(nameId)
+				if !has {
+					panic("Something went horribly wrong")
+				}
+				intT := addSimpleType(ID.NodeInvalid, ID.TypeInt)
+				v := addFunctionType(nameId, intT)
+				ctx.seenIdentifierTypes[string(name)] = v
+				break
+			}
+		}
 	}
 
 	ast.TraversePostorder(onEnter, onExit)

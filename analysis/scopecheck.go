@@ -112,14 +112,15 @@ func (e scopeEnv) qualifiedName(i declID) QualifiedName {
 	buffer := strings.Builder{}
 	d := e.declarations[i]
 	p := d.parent
+	buffer.WriteString(fmt.Sprint(d.node))
+	buffer.WriteByte('\'')
 	for p != declTop {
-		buffer.WriteString(fmt.Sprint(d.node))
-		buffer.WriteByte('\'')
-		buffer.WriteString(fmt.Sprint(d.parent))
-		buffer.WriteByte('\'')
 		d = e.declarations[p]
 		p = d.parent
+		buffer.WriteString(fmt.Sprint(d.node))
+		buffer.WriteByte('\'')
 	}
+
 	return QualifiedName(buffer.String())
 }
 
@@ -220,7 +221,7 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 					isUsage += fmt.Sprintf(" %d", u.user)
 				}
 			}
-			fmt.Printf("%d: %s%s%s", i, name, isUsage, delimiter)
+			fmt.Printf("%d: %s%s -> %s%s", i, name, isUsage, ctx.env.qualifiedName(declID(i)), delimiter)
 		}
 		fmt.Println("")
 	}
@@ -290,7 +291,7 @@ func ScopecheckPass(src *s.Source, ast *a.AST, handler *u.ErrorHandler) ScopeChe
 
 	ast.TraversePreorder(onEnter, onExit)
 
-	// dump(ctx.env.declarations, ctx.env.declUsages, "\n")
+	dump(ctx.env.declarations, ctx.env.declUsages, "\n")
 	return ScopeCheckResult{
 		Ast:            ast,
 		QualifiedNames: NewQualifiedNames(&ctx),

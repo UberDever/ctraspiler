@@ -84,16 +84,14 @@ func runTypecheck(code string, pattern string) error {
 	if err := c.typecheck(); err != nil {
 		return err
 	}
-	astDump := c.ast.Dump(a.DumpShowNodeID)
 	tAstDump := c.tAst.Dump()
 	matched, err := regexp.Match(pattern, []byte(tAstDump))
 	if err != nil {
-		fmt.Println(u.FormatSExpr(astDump))
 		fmt.Println(u.FormatSExpr(tAstDump))
 		return errors.New("Failed to do regexp match")
 	}
 	if !matched {
-		fmt.Println(u.FormatSExpr(astDump))
+		fmt.Println(u.FormatSExpr(c.ast.Dump(a.DumpPostOrder | a.DumpShowNodeID)))
 		fmt.Println(u.FormatSExpr(tAstDump))
 		return fmt.Errorf("Can't match pattern %s, typecheck failed", pattern)
 	}
@@ -124,7 +122,6 @@ func TestTypecheckFail(t *testing.T) {
 			t.Fatalf("Expected only one error")
 		}
 	} else {
-		fmt.Println(u.FormatSExpr(c.ast.Dump(a.DumpShowNodeID)))
 		fmt.Println(u.FormatSExpr(c.tAst.Dump()))
 		t.Fatalf("Expected fail on the typecheck")
 	}
@@ -216,9 +213,9 @@ func TestFunctionTypecheck(t *testing.T) {
 		}
 	`
 	patterns := []string{
-		"unary.*`(FN int int)`",
-		"some.*`(FN (FN int int) bool bool)`",
-		"main.*`(FN int)`",
+		"unary.*`\\(FN int int \\)`",
+		"some.*`\\(FN \\(FN int int \\) bool bool \\)`",
+		"main.*`\\(FN int \\)`",
 	}
 	for _, p := range patterns {
 		if e := runTypecheck(code, p); e != nil {
