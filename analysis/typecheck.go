@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	a "some/ast"
 	ID "some/domain"
 	s "some/syntax"
@@ -148,6 +149,9 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 		n := ast.GetNode(id)
 
 		switch n.Tag() {
+		case ID.NodeFunctionDecl:
+			f := ast.FunctionDecl(n)
+			fmt.Printf("Function %d %s\n", id, ast.GetNodeString(f.Name))
 		case ID.NodeVarDecl:
 			fallthrough
 		case ID.NodeConstDecl:
@@ -158,7 +162,10 @@ func TypeCheckPass(scopeCheckResult ScopeCheckResult, src *s.Source, ast *a.AST,
 			if !tryUnify(id, rhsT, lhsT) {
 				return
 			}
+		case ID.NodeReturnStmt:
+			fmt.Printf("Return %d\n", id)
 			// no push type - statement
+
 		case ID.NodeOr:
 			fallthrough
 		case ID.NodeAnd:

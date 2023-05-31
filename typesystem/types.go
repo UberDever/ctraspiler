@@ -1,6 +1,7 @@
 package typesystem
 
 import (
+	"fmt"
 	ID "some/domain"
 )
 
@@ -110,12 +111,39 @@ func (r TypeRepo) SameKind(id1, id2 ID.Type) bool {
 	}
 }
 
+type typeVarNameGenerator struct {
+	nextLetter   rune
+	seenTypeVars map[ID.Type]string
+}
+
+func newTypeVarNameGenerator() typeVarNameGenerator {
+	return typeVarNameGenerator{
+		nextLetter:   'a',
+		seenTypeVars: make(map[ID.Type]string),
+	}
+}
+
+func (g *typeVarNameGenerator) nextName(id ID.Type) string {
+	_, ok := g.seenTypeVars[id]
+	if !ok {
+		seenCount := len(g.seenTypeVars)
+		g.seenTypeVars[id] = fmt.Sprintf("%c%d", g.nextLetter, seenCount/26)
+		g.nextLetter = g.nextLetter + 1
+		if g.nextLetter >= 'z' {
+			g.nextLetter = 'a'
+		}
+	}
+	return g.seenTypeVars[id]
+}
+
+var nameGenerator = newTypeVarNameGenerator()
+
 func (r TypeRepo) GetString(id ID.Type) (s string) {
 	t := r.GetType(id)
 
-	typeString := func(id ID.Type) string {
+	typeString := func(parentID, id ID.Type) string {
 		if !r.IsTypeVariable(id) {
-			switch t.lhs {
+			switch id {
 			case ID.TypeInt:
 				return "int"
 			case ID.TypeFloat:
@@ -128,13 +156,13 @@ func (r TypeRepo) GetString(id ID.Type) (s string) {
 				panic("this switch should be exaustive")
 			}
 		} else {
-			return "V"
+			return nameGenerator.nextName(parentID)
 		}
 	}
 
 	switch t.Kind {
 	case ID.KindIdentity:
-		s += typeString(t.lhs)
+		s += typeString(id, t.lhs)
 	case ID.KindPtr:
 		s += "(^ "
 		s += r.GetString(t.lhs)
