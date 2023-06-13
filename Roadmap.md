@@ -75,32 +75,52 @@ Main guidelines:
 
 ## Parser
 
-- [] Get EBNF (use go for now)
-- [] Source file
-    - [] Top level decl
-        - [] Declaration
-            - [] Const decl
+- [x] Get EBNF (use go for now)
+- [x] Source file
+    - [x] Top level decl
+        - [x] Declaration
+            - [x] Const decl
             - [] Type decl
-            - [] Var decl
-        - [] Function decl
+            - [x] Var decl
+        - [x] Function decl
         - [] Method decl
-- [] Statements
-    - [] Decl
+- [x] Statements
+    - [x] Decl
     - [] Labeled stmt
-    - [] Simple stmt
-        - [] Expression stmt
+    - [x] Simple stmt
+        - [x] Expression stmt
         - ~~[] Send stmt~~
         - [] Incdec stmt
-        - [] Assignment 
-        - [] Shortvar decl
+        - [x] Assignment 
+        - [x] Shortvar decl
     - ~~[] Go stmt~~
-    - [] Return stmt
-    - [] Break stmt
-    - [] Continue stmt
+    - [x] Return stmt
+    - [x] Break stmt
+    - [x] Continue stmt
     - [] Goto stmt
     - [] Fallthrough stmt
-    - [] If stmt
+    - [x] If stmt
     - [] Switch stmt
     - ~~[] Select stmt~~
     - [] For stmt
     - [] Defer stmt
+
+## Results
+
+Implemented: 
+1. Scanner with integration of antlr
+1. Parser (classic recursive-descend)
+1. AST with two forms (non-typed and typed)
+1. Identifier lookup analysis
+1. Type inference (HM style i guess)
+
+Learned:
+1. Tests and infrastructure for compiler
+1. Golang quirks and drawbacks
+1. How to work with EBNF and write language grammar
+1. How to do analysis on AST
+
+Issues and suggestions:
+1. Use different language for compiler next time (either functional or full-blown system)
+1. Functional type inference haven't made it in full 
+1. Functional style is the best for compiler, because we can puzzle up pieces quite easily to test/implement some new stuff
